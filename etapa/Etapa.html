@@ -1,0 +1,1081 @@
+<!DOCTYPE html>
+<html lang="pt-BR" ng-app="DashboardApp">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Painel Analítico de Etapa e Permanência - TASY Analytics</title>
+
+  <!-- Bibliotecas Externas (versões fixadas + SRI para integridade) -->
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular.min.js"
+          integrity="sha384-c+qsMuWimzoMxDpSd67QtX89Nctaxh/CBMTgEnKrTahfMz1HgjjwqrzEGYXMZxYi"
+          crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"
+          integrity="sha384-b0GXujLkk9eYYSmcSfoyZbfyElGAQnDyY0skCHSG6w3JgTMFnz11ggrTAr7seu9f"
+          crossorigin="anonymous"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+
+<body ng-controller="DashboardController">
+
+<!-- BACKDROP DO MENU LATERAL (VISÍVEL SOMENTE EM TELAS REDUZIDAS) -->
+<div class="sidebar-backdrop" ng-class="{'mostrar': !sidebarColapsada}" ng-click="toggleSidebar()"></div>
+
+<div class="layout" ng-cloak>
+  
+  <!-- ============================================================= -->
+  <!-- BARRA LATERAL (SIDEBAR DE DIMENSÕES E INDICADORES)           -->
+  <!-- ============================================================= -->
+  <aside class="sidebar" ng-class="{'colapsada': sidebarColapsada}">
+    
+    <div class="sidebar-header">
+      <div class="brand-container">
+        <div class="brand-title">
+          <div class="brand-icon">E</div>
+          <h2 class="brand-name">TASY Analytics</h2>
+        </div>
+        <span class="brand-tag">Etapa · Permanência</span>
+      </div>
+
+      <div class="search-box">
+        <span class="search-icon"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
+        <input type="text" class="search-input" id="buscaSidebarInput" placeholder="Filtrar dimensões e métricas..." ng-model="filtroSidebar" aria-label="Filtrar dimensões e métricas">
+        <button type="button" class="search-clear-btn" ng-show="filtroSidebar" ng-click="filtroSidebar = ''" tabindex="-1" aria-label="Limpar filtro da sidebar">✕</button>
+      </div>
+    </div>
+
+    <div class="sidebar-content">
+      
+      <!-- SEÇÃO 1: DIMENSÕES HOSPITALARES -->
+      <div class="section-title">
+        <span class="badge-step">1</span>
+        <span>Dimensão Analisada</span>
+      </div>
+      
+      <div class="group-label">Processo & Atendimento</div>
+      <ul class="menu-list">
+        <li class="menu-item" ng-show="filtrarItem('Conta')" ng-class="{'ativo': config.dimensao === 'conta'}" role="button" tabindex="0" ng-click="selecionarDimensao('conta')" ng-keydown="ativarTecla($event, selecionarDimensao, 'conta')">
+          <span>Conta</span>
+          <span ng-if="config.dimensao === 'conta'">✓</span>
+        </li>
+        <li class="menu-item" ng-show="filtrarItem('Convenio')" ng-class="{'ativo': config.dimensao === 'convenio'}" role="button" tabindex="0" ng-click="selecionarDimensao('convenio')" ng-keydown="ativarTecla($event, selecionarDimensao, 'convenio')">
+          <span>Convênio</span>
+          <span ng-if="config.dimensao === 'convenio'">✓</span>
+        </li>
+        <li class="menu-item" ng-show="filtrarItem('Etapa')" ng-class="{'ativo': config.dimensao === 'etapa'}" role="button" tabindex="0" ng-click="selecionarDimensao('etapa')" ng-keydown="ativarTecla($event, selecionarDimensao, 'etapa')">
+          <span>Etapa</span>
+          <span ng-if="config.dimensao === 'etapa'">✓</span>
+        </li>
+        <li class="menu-item" ng-show="filtrarItem('Motivo devolucao')" ng-class="{'ativo': config.dimensao === 'motivo_devolucao'}" role="button" tabindex="0" ng-click="selecionarDimensao('motivo_devolucao')" ng-keydown="ativarTecla($event, selecionarDimensao, 'motivo_devolucao')">
+          <span>Motivo devolução</span>
+          <span ng-if="config.dimensao === 'motivo_devolucao'">✓</span>
+        </li>
+        <li class="menu-item" ng-show="filtrarItem('Pessoa fisica')" ng-class="{'ativo': config.dimensao === 'pessoa_fisica'}" role="button" tabindex="0" ng-click="selecionarDimensao('pessoa_fisica')" ng-keydown="ativarTecla($event, selecionarDimensao, 'pessoa_fisica')">
+          <span>Pessoa física</span>
+          <span ng-if="config.dimensao === 'pessoa_fisica'">✓</span>
+        </li>
+        <li class="menu-item" ng-show="filtrarItem('Tipo atendimento')" ng-class="{'ativo': config.dimensao === 'tipo_atendimento'}" role="button" tabindex="0" ng-click="selecionarDimensao('tipo_atendimento')" ng-keydown="ativarTecla($event, selecionarDimensao, 'tipo_atendimento')">
+          <span>Tipo atendimento</span>
+          <span ng-if="config.dimensao === 'tipo_atendimento'">✓</span>
+        </li>
+      </ul>
+
+      <div class="divider"></div>
+      
+      <!-- SEÇÃO 2: INDICADORES E MÉTRICAS HOSPITALARES -->
+      <div class="section-title">
+        <span class="badge-step">2</span>
+        <span>Métricas / Indicadores</span>
+      </div>
+      
+      <ul class="menu-list">
+        <li class="menu-item todos-item" ng-show="filtrarItem('Todos os Indicadores Multivariada')" ng-class="{'ativo': config.indicador === 'todos'}" role="button" tabindex="0" ng-click="selecionarIndicador('todos')" ng-keydown="ativarTecla($event, selecionarIndicador, 'todos')">
+          <span>Matriz Multivariada (Todos os indicadores)</span>
+        </li>
+      </ul>
+
+      <div class="group-label">Tempo de Permanência & Volume</div>
+      <ul class="menu-list">
+        <li class="menu-item" ng-show="filtrarItem('Qtde Contas')" ng-class="{'ativo': config.indicador === 'qtd_contas'}" role="button" tabindex="0" ng-click="selecionarIndicador('qtd_contas')" ng-keydown="ativarTecla($event, selecionarIndicador, 'qtd_contas')">
+          <span>Qtde Contas</span>
+          <span class="dot-color" style="background-color: var(--color-qtd-contas);"></span>
+        </li>
+        <li class="menu-item" ng-show="filtrarItem('Dias Etapa')" ng-class="{'ativo': config.indicador === 'dias_etapa'}" role="button" tabindex="0" ng-click="selecionarIndicador('dias_etapa')" ng-keydown="ativarTecla($event, selecionarIndicador, 'dias_etapa')">
+          <span>Dias Etapa</span>
+          <span class="dot-color" style="background-color: var(--color-dias-etapa);"></span>
+        </li>
+        <li class="menu-item" ng-show="filtrarItem('Media Etapa')" ng-class="{'ativo': config.indicador === 'media_etapa'}" role="button" tabindex="0" ng-click="selecionarIndicador('media_etapa')" ng-keydown="ativarTecla($event, selecionarIndicador, 'media_etapa')">
+          <span>Média Etapa</span>
+          <span class="dot-color" style="background-color: var(--color-media-etapa);"></span>
+        </li>
+        <li class="menu-item" ng-show="filtrarItem('Dias Alta')" ng-class="{'ativo': config.indicador === 'dias_alta'}" role="button" tabindex="0" ng-click="selecionarIndicador('dias_alta')" ng-keydown="ativarTecla($event, selecionarIndicador, 'dias_alta')">
+          <span>Dias Alta</span>
+          <span class="dot-color" style="background-color: var(--color-dias-alta);"></span>
+        </li>
+        <li class="menu-item" ng-show="filtrarItem('Media Alta')" ng-class="{'ativo': config.indicador === 'media_alta'}" role="button" tabindex="0" ng-click="selecionarIndicador('media_alta')" ng-keydown="ativarTecla($event, selecionarIndicador, 'media_alta')">
+          <span>Média Alta</span>
+          <span class="dot-color" style="background-color: var(--color-media-alta);"></span>
+        </li>
+      </ul>
+
+    </div>
+
+    <!-- DICA DE ATALHOS DE TECLADO -->
+    <div class="sidebar-footer-hints">
+      ⌨️ <b>Ctrl+K</b> buscar dimensão &nbsp;·&nbsp; <b>/</b> buscar na tabela<br>
+      <b>Ctrl+E</b> exportar CSV &nbsp;·&nbsp; <b>Esc</b> limpar buscas
+    </div>
+  </aside>
+
+  <!-- ============================================================= -->
+  <!-- CONTEÚDO PRINCIPAL                                            -->
+  <!-- ============================================================= -->
+  <main class="main-content">
+    
+    <!-- CABEÇALHO SUPERIOR (FILTROS GLOBAIS E EXPORTAÇÃO) -->
+    <header class="top-header">
+      
+      <div class="header-left">
+        <!-- BOTÃO TOGGLE SIDEBAR (SEMPRE VISÍVEL) -->
+        <button class="btn-toggle-sidebar" ng-click="toggleSidebar()" title="Recolher / Expandir Menu Lateral">
+          <span>{{ sidebarColapsada ? '☰ Menu Lateral' : '◀ Ocultar Menu' }}</span>
+        </button>
+
+        <!-- GRANULARIDADE -->
+        <div class="filter-group highlight">
+          <label>Período</label>
+          <select class="form-control" ng-model="filtrosTop.tipoPeriodo">
+            <option value="dia">Dia</option>
+            <option value="mes">Mês</option>
+            <option value="ano">Ano</option>
+          </select>
+        </div>
+
+        <!-- SELETORES DE DATA CONDICIONAIS -->
+        <div class="filter-group highlight" ng-if="filtrosTop.tipoPeriodo === 'dia'">
+          <label>Data</label>
+          <input type="date" class="form-control" ng-model="filtrosTop.dataDia">
+        </div>
+
+        <div class="filter-group highlight" ng-if="filtrosTop.tipoPeriodo === 'mes'">
+          <label>Mês / Ano</label>
+          <input type="month" class="form-control" ng-model="filtrosTop.dataMes">
+        </div>
+
+        <div class="filter-group highlight" ng-if="filtrosTop.tipoPeriodo === 'ano'">
+          <label>Ano</label>
+          <select class="form-control" ng-model="filtrosTop.dataAno">
+            <option ng-repeat="ano in listaAnos" ng-value="ano">{{ ano }}</option>
+          </select>
+        </div>
+
+        <!-- PRESETS RÁPIDOS DE DATA -->
+        <div class="date-presets" role="group" aria-label="Atalhos rápidos de período">
+          <button type="button" class="preset-btn" ng-class="{'active': isPresetAtivo('hoje')}" ng-click="aplicarPreset('hoje')">Hoje</button>
+          <button type="button" class="preset-btn" ng-class="{'active': isPresetAtivo('este_mes')}" ng-click="aplicarPreset('este_mes')">Este Mês</button>
+          <button type="button" class="preset-btn" ng-class="{'active': isPresetAtivo('mes_anterior')}" ng-click="aplicarPreset('mes_anterior')">Mês Anterior</button>
+          <button type="button" class="preset-btn" ng-class="{'active': isPresetAtivo('ano_atual')}" ng-click="aplicarPreset('ano_atual')">Ano Atual</button>
+        </div>
+
+        <!-- VISÃO NORMAL VS COMPARATIVO -->
+        <div class="filter-group">
+          <label>Visão</label>
+          <select class="form-control" ng-model="filtrosTop.modoVisao" aria-label="Modo de visão">
+            <option value="normal">Período Atual</option>
+            <option value="comparativo">Comparativo (vs. Anterior)</option>
+            <option value="yoy">Comparativo (vs. Ano Passado)</option>
+          </select>
+        </div>
+
+        <!-- ORDENAÇÃO DOS DADOS / GRÁFICOS -->
+        <div class="filter-group highlight">
+          <label>Ordenação</label>
+          <select class="form-control" ng-model="filtrosTop.ordem" ng-change="aplicarOrdenacaoPadrao()">
+            <option value="desc">Maiores Primeiro ↓</option>
+            <option value="asc">Menores Primeiro ↑</option>
+          </select>
+        </div>
+
+        <!-- LIMITE DE REGISTROS -->
+        <div class="filter-group">
+          <label>Exibir</label>
+          <select class="form-control" ng-model="filtrosTop.limite">
+            <option value="5">Top 5</option>
+            <option value="10">Top 10</option>
+            <option value="25">Top 25</option>
+            <option value="50">Top 50</option>
+            <option value="todos">Todos</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- AÇÕES: TEMA, COMPARTILHAR, VIEWS, COPIAR, EXPORTAR E IMPRIMIR -->
+      <div class="header-right">
+        <button type="button" class="btn-icon-only" ng-click="alternarTema()" title="{{ temaEscuro ? 'Mudar para tema claro' : 'Mudar para tema escuro' }}" aria-label="Alternar tema">
+          <svg ng-if="!temaEscuro" class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          <svg ng-if="temaEscuro" class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+        </button>
+
+        <button type="button" class="btn-icon-only" ng-click="compartilharVisao()" title="Copiar link desta visão (filtros incluídos)" aria-label="Compartilhar visão">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        </button>
+
+        <div class="views-dropdown">
+          <button type="button" class="btn-action" ng-click="menuViewsAberto = !menuViewsAberto" title="Visões salvas">
+            <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <span>Views</span>
+            <span style="font-size: 9px; opacity: .7;">▼</span>
+          </button>
+          <div class="views-menu" ng-if="menuViewsAberto">
+            <button type="button" class="view-item" ng-click="salvarViewAtual()" style="color: var(--accent);">
+              <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Salvar visão atual...
+            </button>
+            <div class="menu-sep"></div>
+            <div class="views-vazio" ng-if="!viewsSalvas.length">Nenhuma visão salva ainda.</div>
+            <div class="view-item" role="button" tabindex="0" ng-repeat="v in viewsSalvas" ng-click="aplicarView(v)" ng-keydown="ativarTecla($event, aplicarView, v)">
+              <span style="flex:1; min-width:0;">
+                {{ v.nome }}
+                <span class="view-desc">{{ v.desc }}</span>
+              </span>
+              <button type="button" class="view-del" ng-click="excluirView($event, v)" title="Excluir visão">✕</button>
+            </div>
+          </div>
+        </div>
+
+        <button type="button" class="btn-action" ng-click="copiarTabela()" title="Copiar dados tabulados para área de transferência">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          <span>Copiar</span>
+        </button>
+
+        <div class="exportar-dropdown">
+          <button type="button" class="btn-action" ng-click="menuExportarAberto = !menuExportarAberto" title="Exportar dados">
+            <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <span>Exportar</span>
+            <span style="font-size: 9px; opacity: .7;">▼</span>
+          </button>
+          <div class="exportar-menu" ng-if="menuExportarAberto">
+            <button type="button" ng-click="executarExportacao('csv')">
+              <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+              <span>CSV — registros exibidos<small>Respeita o filtro Top-N atual</small></span>
+            </button>
+            <button type="button" ng-click="executarExportacao('csv_completo')">
+              <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+              <span>CSV — base completa<small>Todos os registros, ignora o Top-N</small></span>
+            </button>
+            <div class="menu-sep"></div>
+            <button type="button" ng-click="executarExportacao('excel')">
+              <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
+              <span>Excel (.xls)<small>Planilha formatada do período</small></span>
+            </button>
+            <div class="menu-sep"></div>
+            <button type="button" ng-click="executarExportacao('png')">
+              <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              <span>Imagem PNG<small>Gráfico principal em alta resolução</small></span>
+            </button>
+          </div>
+        </div>
+
+        <button type="button" class="btn-action btn-primary" ng-click="imprimirRelatorio()" title="Imprimir ou salvar PDF executivo (Ctrl+P)">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          <span>Imprimir PDF</span>
+        </button>
+      </div>
+
+    </header>
+
+    <!-- BARRA INFORMATIVA DE PERÍODO & COMPARATIVO -->
+    <div class="period-banner">
+      <div class="period-info-item">
+        <span class="period-badge">{{ infoPeriodo.rotuloAtual }}</span>
+        <span class="banner-vs" ng-if="filtrosTop.modoVisao === 'comparativo'">vs</span>
+        <span class="period-badge-ant" ng-if="filtrosTop.modoVisao === 'comparativo'">{{ infoPeriodo.rotuloAnterior }}</span>
+      </div>
+
+      <div class="period-info-item banner-meta" ng-if="respostaBackend">
+        {{ respostaBackend.nomeDimensao }} · {{ respostaBackend.totalBase }} itens na base
+      </div>
+    </div>
+
+    <!-- CORPO COM SCROLL -->
+    <div class="dashboard-scroll">
+      
+      <!-- CABEÇALHO VISÍVEL SOMENTE NA IMPRESSÃO -->
+      <div class="print-only-header">
+        <h2>TASY Hospital Analytics - Relatório de Etapa e Tempo de Permanência</h2>
+        <p><strong>Dimensão:</strong> {{ respostaBackend.nomeDimensao }} | <strong>Período:</strong> {{ infoPeriodo.rotuloAtual }} <span ng-if="filtrosTop.modoVisao === 'comparativo'">| <strong>Comparativo:</strong> vs. {{ infoPeriodo.rotuloAnterior }}</span> | <strong>Emissão:</strong> {{ dataEmissaoImpressao }}</p>
+      </div>
+
+      <!-- ESTADO DE CARREGAMENTO (SPINNER) -->
+      <div ng-if="carregando" class="empty-state">
+        <div class="loader-spinner"></div>
+        <h2>Processando Agregações de Permanência...</h2>
+        <p>Aguarde enquanto recalculamos os indicadores para {{ respostaBackend.nomeDimensao || 'a dimensão selecionada' }}.</p>
+      </div>
+
+      <!-- ESTADO DE ERRO (FALHA DE API / PROCESSAMENTO) -->
+      <div ng-if="erroCarregamento && !carregando" class="empty-state">
+        <svg class="ico" style="width: 40px; height: 40px; color: var(--color-val-glosado); margin-bottom: 10px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <h2>Falha ao carregar os dados</h2>
+        <p>Não foi possível obter os indicadores do servidor. Verifique a conexão e tente novamente.</p>
+        <button type="button" class="btn-action btn-primary" style="margin-top: 12px; height: 36px;" ng-click="tentarNovamente()">
+          Tentar Novamente
+        </button>
+      </div>
+
+      <!-- DASHBOARD CARREGADO COM DADOS -->
+      <div ng-show="!carregando && !erroCarregamento && respostaBackend">
+
+        <!-- ESTADO VAZIO: NENHUM REGISTRO RETORNADO -->
+        <div ng-if="respostaBackend.dados.length === 0" class="empty-state" style="height: auto; padding: 48px 0;">
+          <h2>Nenhum dado encontrado</h2>
+          <p>Nenhum registro corresponde aos filtros atuais. Ajuste o período ou selecione outra dimensão.</p>
+        </div>
+
+        <!-- CONTEÚDO PRINCIPAL (SOMENTE QUANDO HÁ REGISTROS) -->
+        <div ng-if="respostaBackend.dados.length > 0">
+        
+        <!-- ============================================================= -->
+        <!-- METAS EXECUTIVAS (SEMÁFORO)                                   -->
+        <!-- ============================================================= -->
+        <div class="metas-bar" ng-if="respostaBackend.modoTodos" style="position: relative;">
+          <span class="chip-meta" ng-class="metaStatus('media_etapa').ok ? 'ok' : 'fora'" title="Meta configurável para o tempo médio na etapa">
+            <span class="m-dot"></span> Média Etapa ≤ <b>{{ metas.media_etapa.valor }} dias</b>
+          </span>
+          <span class="chip-meta" ng-class="metaStatus('media_alta').ok ? 'ok' : 'fora'" title="Meta configurável para o tempo médio até a alta">
+            <span class="m-dot"></span> Média Alta ≤ <b>{{ metas.media_alta.valor }} dias</b>
+          </span>
+          <span class="chip-meta" ng-if="conformidadeMeta != null">
+            <span class="m-dot"></span> <b>{{ conformidadeMeta }}</b>/{{ respostaBackend.dados.length }} itens na meta
+          </span>
+
+          <button type="button" class="btn-action btn-metas" ng-click="alternarPainel('painelMetasAberto')" title="Configurar metas dos indicadores">
+            <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            Metas
+          </button>
+
+          <div class="colunas-painel metas-painel" ng-if="painelMetasAberto">
+            <div class="meta-linha">
+              <span>Média Etapa (máx.)</span>
+              <input type="number" step="0.5" min="0" ng-model="metas.media_etapa.valor" ng-change="salvarMetas()">
+              <span>dias por conta</span>
+            </div>
+            <div class="meta-linha">
+              <span>Média Alta (máx.)</span>
+              <input type="number" step="0.5" min="0" ng-model="metas.media_alta.valor" ng-change="salvarMetas()">
+              <span>dias por conta</span>
+            </div>
+            <div class="meta-acoes">
+              <button type="button" class="btn-action" style="height:26px; font-size:11px;" ng-click="restaurarMetasPadrao()">Restaurar padrão</button>
+              <button type="button" class="btn-action" style="height:26px; font-size:11px;" ng-click="alternarPainel('painelMetasAberto', false)">Fechar</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- KPIS EXECUTIVOS EM MODO MULTIVARIADO                          -->
+        <!-- ============================================================= -->
+        <div class="kpi-grid" ng-if="respostaBackend.modoTodos">
+          
+          <div class="kpi-card kpi-dias-etapa kpi-clicavel" role="button" tabindex="0" ng-click="selecionarIndicador('dias_etapa')" ng-keydown="ativarTecla($event, selecionarIndicador, 'dias_etapa')" title="Clique para análise detalhada dos Dias Etapa">
+            <div class="kpi-top">
+              <span class="kpi-label">Dias Etapa</span>
+              <span class="kpi-badge kpi-hint">Acumulado</span>
+            </div>
+            <div class="kpi-value" style="color: var(--color-dias-etapa);">{{ kpis.diasEtapaFormatado }}</div>
+            <div class="kpi-sub">
+              <span>Média Etapa: {{ kpis.mediaEtapaFormatado }} dias/conta</span>
+              <span ng-if="filtrosTop.modoVisao === 'comparativo'" ng-class="{'text-green': kpis.varDiasEtapa <= 0, 'text-red': kpis.varDiasEtapa > 0}" style="margin-left: auto; font-weight: 700;">
+                {{ kpis.varDiasEtapa >= 0 ? '▲ +' : '▼ ' }}{{ kpis.varDiasEtapa | number:1 }}%
+              </span>
+            </div>
+          </div>
+
+          <div class="kpi-card kpi-media-etapa kpi-clicavel" role="button" tabindex="0" ng-click="selecionarIndicador('media_etapa')" ng-keydown="ativarTecla($event, selecionarIndicador, 'media_etapa')" title="Clique para análise detalhada da Média Etapa">
+            <div class="kpi-top">
+              <span class="kpi-label">Média Etapa</span>
+              <span class="kpi-badge" style="background:#d1fae5; color:#065f46;">Tempo Médio</span>
+            </div>
+            <div class="kpi-value" style="color: var(--color-media-etapa);">{{ kpis.mediaEtapaFormatado }} dias</div>
+            <div class="kpi-sub">
+              <span>Permanência média na etapa por conta</span>
+              <span ng-if="filtrosTop.modoVisao === 'comparativo'" ng-class="{'text-green': kpis.varMediaEtapa <= 0, 'text-red': kpis.varMediaEtapa > 0}" style="margin-left: auto; font-weight: 700;">
+                {{ kpis.varMediaEtapa >= 0 ? '▲ +' : '▼ ' }}{{ kpis.varMediaEtapa | number:1 }}%
+              </span>
+            </div>
+          </div>
+
+          <div class="kpi-card kpi-dias-alta kpi-clicavel" role="button" tabindex="0" ng-click="selecionarIndicador('dias_alta')" ng-keydown="ativarTecla($event, selecionarIndicador, 'dias_alta')" title="Clique para análise detalhada dos Dias Alta">
+            <div class="kpi-top">
+              <span class="kpi-label">Dias Alta</span>
+              <span class="kpi-badge" style="background:#e0f2fe; color:#0369a1;">Total até Alta</span>
+            </div>
+            <div class="kpi-value" style="color: var(--color-dias-alta);">{{ kpis.diasAltaFormatado }}</div>
+            <div class="kpi-sub">
+              <span>Média Alta: {{ kpis.mediaAltaFormatado }} dias/conta</span>
+              <span ng-if="filtrosTop.modoVisao === 'comparativo'" ng-class="{'text-green': kpis.varDiasAlta <= 0, 'text-red': kpis.varDiasAlta > 0}" style="margin-left: auto; font-weight: 700;">
+                {{ kpis.varDiasAlta >= 0 ? '▲ +' : '▼ ' }}{{ kpis.varDiasAlta | number:1 }}%
+              </span>
+            </div>
+          </div>
+
+          <div class="kpi-card kpi-media-alta kpi-clicavel" role="button" tabindex="0" ng-click="selecionarIndicador('media_alta')" ng-keydown="ativarTecla($event, selecionarIndicador, 'media_alta')" title="Clique para análise detalhada da Média Alta">
+            <div class="kpi-top">
+              <span class="kpi-label">Média Alta</span>
+              <span class="kpi-badge" style="background:#fef3c7; color:#b45309;">Média até Alta</span>
+            </div>
+            <div class="kpi-value" style="color: var(--color-media-alta);">{{ kpis.mediaAltaFormatado }} dias</div>
+            <div class="kpi-sub">
+              <span>Permanência total média até a alta</span>
+              <span ng-if="filtrosTop.modoVisao === 'comparativo'" ng-class="{'text-green': kpis.varMediaAlta <= 0, 'text-red': kpis.varMediaAlta > 0}" style="margin-left: auto; font-weight: 700;">
+                {{ kpis.varMediaAlta >= 0 ? '▲ +' : '▼ ' }}{{ kpis.varMediaAlta | number:1 }}%
+              </span>
+            </div>
+          </div>
+
+          <div class="kpi-card kpi-contas kpi-clicavel" role="button" tabindex="0" ng-click="selecionarIndicador('qtd_contas')" ng-keydown="ativarTecla($event, selecionarIndicador, 'qtd_contas')" title="Clique para análise detalhada do Volume de Contas">
+            <div class="kpi-top">
+              <span class="kpi-label">Qtde Contas</span>
+              <span class="kpi-badge kpi-hint">Volumetria</span>
+            </div>
+            <div class="kpi-value" style="color: var(--color-qtd-contas);">{{ kpis.totalContasFormatado }}</div>
+            <div class="kpi-sub">
+              <span>{{ respostaBackend.dados.length }} {{ respostaBackend.nomeDimensao }}s na lista</span>
+              <span ng-if="filtrosTop.modoVisao === 'comparativo'" ng-class="{'text-green': kpis.varContas >= 0, 'text-red': kpis.varContas < 0}" style="margin-left: auto; font-weight: 700;">
+                {{ kpis.varContas >= 0 ? '▲ +' : '▼ ' }}{{ kpis.varContas | number:1 }}%
+              </span>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- KPIS EXECUTIVOS EM MODO INDICADOR INDIVIDUAL                  -->
+        <!-- ============================================================= -->
+        <div class="kpi-grid" ng-if="!respostaBackend.modoTodos">
+          
+          <div class="kpi-card">
+            <div class="kpi-top">
+              <span class="kpi-label">Dimensão em Análise</span>
+              <span class="kpi-badge">{{ respostaBackend.totalBase }} itens</span>
+            </div>
+            <div class="kpi-value" style="font-size: 18px; color: var(--primary);">{{ respostaBackend.nomeDimensao }}</div>
+            <div class="kpi-sub">Total cadastrado na base TASY</div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-top">
+              <span class="kpi-label">Métrica Ativa</span>
+              <span class="kpi-badge" ng-class="respostaBackend.badgeClass">Individual</span>
+            </div>
+            <div class="kpi-value" style="font-size: 18px;">{{ respostaBackend.nomeIndicador }}</div>
+            <div class="kpi-sub">Visão Específica de Desempenho</div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-top">
+              <span class="kpi-label">{{ respostaBackend.isPercentual || respostaBackend.isDecimal ? 'Média Geral' : 'Soma Total' }} ({{ infoPeriodo.rotuloAtual }})</span>
+              <span class="kpi-badge">Exibição</span>
+            </div>
+            <div class="kpi-value" style="color: var(--primary-hover);">{{ kpis.somaTotalFormatted }}</div>
+            <div class="kpi-sub">{{ respostaBackend.isPercentual || respostaBackend.isDecimal ? 'Média do período' : 'Média: ' + kpis.mediaFormatted + ' por item' }}</div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-top">
+              <span class="kpi-label">Item Líder (1º Lugar)</span>
+              <span class="kpi-badge" style="background:#fef3c7; color:#b45309;">Top 1</span>
+            </div>
+            <div class="kpi-value" style="font-size: 17px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
+              {{ kpis.liderLabel }}
+            </div>
+            <div class="kpi-sub">
+              <span>{{ kpis.liderValorFormatado }} <span ng-if="!respostaBackend.isPercentual && !respostaBackend.isDecimal">({{ kpis.percentualLider }}% do total)</span></span>
+            </div>
+          </div>
+
+          <div class="kpi-card" ng-if="filtrosTop.modoVisao === 'comparativo'">
+            <div class="kpi-top">
+              <span class="kpi-label">Variação Global</span>
+              <span class="kpi-badge">Vs. {{ infoPeriodo.rotuloAnterior }}</span>
+            </div>
+            <div class="kpi-value" ng-class="{'text-green': kpis.variacaoGlobal >= 0, 'text-red': kpis.variacaoGlobal < 0}">
+              {{ kpis.variacaoGlobal >= 0 ? '▲ +' : '▼ ' }}{{ kpis.variacaoGlobal | number:1 }}%
+            </div>
+            <div class="kpi-sub">Período Anterior: {{ kpis.somaAnteriorFormatted }}</div>
+          </div>
+
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- PAINEL MAIORES VARIAÇÕES (SOMENTE EM COMPARATIVO)             -->
+        <!-- ============================================================= -->
+        <div class="card" ng-if="filtrosTop.modoVisao !== 'normal' && respostaBackend.dados.length > 0">
+          <div class="card-header">
+            <div class="card-header-left">
+              <h3>
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                <span>Maiores Variações</span>
+              </h3>
+              <span class="card-subtitle">Clique em um item para localizá-lo na tabela</span>
+            </div>
+
+            <div class="card-actions" ng-if="respostaBackend.modoTodos">
+              <select class="form-control" style="height: 30px; font-size: 11.5px; border: 1px solid var(--border); border-radius: 6px;"
+                      ng-model="painelVarMetrica.metrica" ng-change="calcularMaioresVariacoes()" aria-label="Métrica do painel de variações">
+                <option ng-repeat="col in definicaoColunas" ng-value="col.key">{{ col.rotulo }}</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="card-body" ng-if="maioresVar.altas.length || maioresVar.quedas.length">
+            <div class="variacoes-grid">
+              <div class="variacoes-coluna">
+                <h4 style="color: var(--color-val-glosado);">
+                  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+                  Maiores Altas
+                </h4>
+                <div class="variacao-item" ng-repeat="v in maioresVar.altas" ng-click="focarLinhaTabela(v.label)" title="Localizar na tabela">
+                  <span class="v-label">{{ v.label }}</span>
+                  <span class="v-val">{{ v.valorFmt }}</span>
+                  <span class="v-delta" ng-class="classeDeltaVar(v.var, v.favoravelAlta)">▲ +{{ v.var | number:1 }}%</span>
+                </div>
+                <div ng-if="!maioresVar.altas.length" class="views-vazio">Nenhuma alta relevante</div>
+              </div>
+
+              <div class="variacoes-coluna">
+                <h4 style="color: var(--color-val-recebido);">
+                  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
+                  Maiores Quedas
+                </h4>
+                <div class="variacao-item" ng-repeat="v in maioresVar.quedas" ng-click="focarLinhaTabela(v.label)" title="Localizar na tabela">
+                  <span class="v-label">{{ v.label }}</span>
+                  <span class="v-val">{{ v.valorFmt }}</span>
+                  <span class="v-delta" ng-class="classeDeltaVar(v.var, !v.favoravelAlta)">▼ {{ v.var | number:1 }}%</span>
+                </div>
+                <div ng-if="!maioresVar.quedas.length" class="views-vazio">Nenhuma queda relevante</div>
+              </div>
+            </div>
+          </div>
+          <div class="card-body" ng-if="!(maioresVar.altas.length || maioresVar.quedas.length)">
+            <div class="tendencia-vazia">Sem dados comparativos suficientes para calcular variações.</div>
+          </div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- CARD DO GRÁFICO (CHART.JS APRIMORADO)                         -->
+        <!-- ============================================================= -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-header-left">
+              <h3>
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                <span>Análise Gráfica: {{ respostaBackend.nomeDimensao }}</span>
+              </h3>
+              <span class="card-subtitle" ng-if="respostaBackend.modoTodos">
+                (Matriz Multivariada - Ordenado por {{ filtrosTop.ordem === 'desc' ? 'Maiores Primeiro ↓' : 'Menores Primeiro ↑' }})
+              </span>
+            </div>
+
+            <div class="card-actions">
+              <!-- BOTÃO RÁPIDO PARA INVERTER ORDENAÇÃO DOS GRÁFICOS -->
+              <button class="btn-action" style="height: 28px; padding: 0 8px; font-size: 11px;" ng-click="inverterOrdenacaoGrafico()" title="Inverter ordenação (Maior/Menor)">
+                <span>⇅ {{ filtrosTop.ordem === 'desc' ? 'Maior → Menor' : 'Menor → Maior' }}</span>
+              </button>
+
+              <!-- SELETOR DE TIPO DE GRÁFICO -->
+              <div class="chart-type-selector">
+                <button class="type-btn" ng-class="{'active': tipoGraficoVisual === 'horizontalBar'}" ng-click="alterarTipoGrafico('horizontalBar')">
+                  Barras Horizontais
+                </button>
+                <button class="type-btn" ng-class="{'active': tipoGraficoVisual === 'bar'}" ng-click="alterarTipoGrafico('bar')">
+                  Colunas
+                </button>
+                <button class="type-btn" ng-if="!respostaBackend.modoTodos && !respostaBackend.isPercentual" ng-class="{'active': tipoGraficoVisual === 'doughnut'}" ng-click="alterarTipoGrafico('doughnut')">
+                  Participação (%)
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card-body">
+            
+            <!-- FILTROS RÁPIDOS DE SÉRIES QUANDO EM MODO 'TODOS' -->
+            <div class="chart-filter-bar" ng-if="respostaBackend.modoTodos">
+              <span class="chart-filter-label">Séries Visíveis:</span>
+              <button class="pill-filter" ng-class="{'active': filtroSerieGrafico === 'todos'}" ng-click="filtrarSeriesGrafico('todos')">
+                Todos os Indicadores
+              </button>
+              <button class="pill-filter" ng-class="{'active': filtroSerieGrafico === 'etapa'}" ng-click="filtrarSeriesGrafico('etapa')">
+                Etapa (Dias & Média)
+              </button>
+              <button class="pill-filter" ng-class="{'active': filtroSerieGrafico === 'alta'}" ng-click="filtrarSeriesGrafico('alta')">
+                Até a Alta (Dias & Média)
+              </button>
+              <button class="pill-filter" ng-class="{'active': filtroSerieGrafico === 'contas'}" ng-click="filtrarSeriesGrafico('contas')">
+                Volume de Contas
+              </button>
+            </div>
+
+            <div class="charts-grid" ng-class="{'comparativo': filtrosTop.modoVisao === 'comparativo' && !respostaBackend.modoTodos}">
+              
+              <div>
+                <div class="chart-box-header" ng-if="filtrosTop.modoVisao === 'comparativo' && !respostaBackend.modoTodos">
+                  Período Atual ({{ infoPeriodo.rotuloAtual }})
+                </div>
+                <div class="chart-scroll-wrapper" ng-style="{'height': tipoGraficoVisual === 'doughnut' ? '380px' : '430px'}">
+                  <div class="chart-container-inner" ng-style="{'height': calcularAlturaContainer(respostaBackend.dados.length, respostaBackend.modoTodos, tipoGraficoVisual)}">
+                    <canvas id="chartPrincipal"></canvas>
+                  </div>
+                </div>
+              </div>
+              
+              <div ng-show="filtrosTop.modoVisao === 'comparativo' && !respostaBackend.modoTodos">
+                <div class="chart-box-header">
+                  Período Anterior ({{ infoPeriodo.rotuloAnterior }})
+                </div>
+                <div class="chart-scroll-wrapper" ng-style="{'height': tipoGraficoVisual === 'doughnut' ? '380px' : '430px'}">
+                  <div class="chart-container-inner" ng-style="{'height': calcularAlturaContainer(respostaBackend.dados.length, respostaBackend.modoTodos, tipoGraficoVisual)}">
+                    <canvas id="chartSecundario"></canvas>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- EVOLUÇÃO TEMPORAL (TENDÊNCIA 12 MESES)                        -->
+        <!-- ============================================================= -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-header-left">
+              <h3>
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                <span>Evolução Temporal: {{ respostaBackend.nomeDimensao }}</span>
+              </h3>
+              <span class="card-subtitle" ng-if="filtrosTop.modoVisao !== 'normal'">Linha tracejada = ano anterior</span>
+            </div>
+
+            <div class="card-actions">
+              <select class="form-control" style="height: 30px; font-size: 11.5px; border: 1px solid var(--border); border-radius: 6px;"
+                      ng-model="tendenciaAno.valor" ng-change="carregarTendencia()" aria-label="Ano da evolução temporal">
+                <option ng-repeat="ano in listaAnosTendencia" ng-value="ano">{{ ano }}</option>
+              </select>
+
+              <div class="chart-type-selector">
+                <button type="button" class="type-btn" ng-class="{'active': filtroSerieTendencia === 'todos'}" ng-click="definirSerieTendencia('todos')">Todos</button>
+                <button type="button" class="type-btn" ng-class="{'active': filtroSerieTendencia === 'etapa'}" ng-click="definirSerieTendencia('etapa')">Etapa</button>
+                <button type="button" class="type-btn" ng-class="{'active': filtroSerieTendencia === 'alta'}" ng-click="definirSerieTendencia('alta')">Alta</button>
+                <button type="button" class="type-btn" ng-class="{'active': filtroSerieTendencia === 'contas'}" ng-click="definirSerieTendencia('contas')">Contas</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card-body">
+            <div ng-if="tendenciaCarregando" style="display:flex; align-items:center; justify-content:center; height:320px; color: var(--text-muted); font-size: 12.5px;">
+              <div class="loader-spinner" style="width:28px;height:28px;border-width:3px;margin:0;"></div>
+              <span style="margin-left: 12px;">Carregando evolução mensal...</span>
+            </div>
+            <div class="tendencia-wrapper" ng-show="!tendenciaCarregando && tendenciaTemDados">
+              <canvas id="chartTendencia"></canvas>
+            </div>
+            <div class="tendencia-vazia" ng-if="!tendenciaCarregando && !tendenciaTemDados">
+              Sem dados mensais para {{ tendenciaAno.valor }}.
+            </div>
+          </div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- CARD DA TABELA DE DETALHAMENTO COM PESQUISA INTERNA          -->
+        <!-- ============================================================= -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-header-left">
+              <h3>
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="9" y1="10" x2="9" y2="20"/></svg>
+                <span>Detalhamento Analítico: {{ respostaBackend.nomeDimensao }}</span>
+              </h3>
+              <span class="card-subtitle" ng-if="respostaBackend.modoTodos && filtrosTop.modoVisao === 'comparativo'">
+                Δ% vs. {{ infoPeriodo.rotuloAnterior }}
+              </span>
+            </div>
+
+            <div class="table-stats">
+              Exibindo <strong>{{ dadosFiltradosTabela.length }}</strong> de <strong>{{ respostaBackend.totalBase }}</strong> registros
+            </div>
+          </div>
+
+          <div class="card-body">
+            
+            <!-- BARRA DE FERRAMENTAS DA TABELA (BUSCA RÁPIDA + COLUNAS) -->
+            <div class="table-toolbar">
+              <div class="table-search-box">
+                <span class="search-icon" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
+                <input type="text" id="buscaTabelaInput" placeholder="Filtrar resultados na tabela..." ng-model="filtrosBusca.tabela" ng-change="aplicarFiltroTabela()" aria-label="Buscar na tabela">
+                <button type="button" class="search-clear-btn" ng-show="filtrosBusca.tabela" ng-click="limparBuscaTabela()" tabindex="-1" aria-label="Limpar busca da tabela">✕</button>
+              </div>
+
+              <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <div class="colunas-dropdown" ng-if="respostaBackend.modoTodos">
+                  <button type="button" class="btn-action" style="height: 30px; padding: 0 10px; font-size: 11px;"
+                          ng-click="alternarPainel('painelColunasAberto')"
+                          title="Escolher quais colunas exibir na tabela">
+                    <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+                    Colunas ({{ getColunasVisiveis().length }}/{{ definicaoColunas.length }})
+                  </button>
+                  <div class="colunas-painel" ng-if="painelColunasAberto">
+                    <label ng-repeat="col in definicaoColunas">
+                      <input type="checkbox" ng-model="colunasVisiveis[col.key]" ng-change="salvarColunas()"> {{ col.rotulo }}
+                    </label>
+                  </div>
+                </div>
+
+                <button type="button" class="btn-action" style="height: 30px; padding: 0 10px; font-size: 11px;"
+                        ng-if="filtrosTop.modoVisao !== 'normal' && respostaBackend.modoTodos"
+                        ng-class="destacarAnomalias ? 'btn-primary' : ''"
+                        ng-click="alternarAnomalias()"
+                        title="Marcar linhas com variação acima do limite configurado">
+                  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                  Anomalias{{ destacarAnomalias ? ' ≥ ' + limiarAnomalia + '%' : '' }}
+                </button>
+
+                <button type="button" class="btn-action btn-dicionario" style="height: 30px; padding: 0 10px; font-size: 11px;"
+                        ng-click="alternarPainel('painelDicionarioAberto')"
+                        title="O que significa cada indicador?">
+                  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                  Dicionário
+                </button>
+
+                <div style="font-size: 11.5px; color: var(--text-muted);">
+                  Clique nos títulos para ordenar · Pressione <b>/</b> para buscar
+                </div>
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              
+              <!-- ========================================================= -->
+              <!-- TABELA MODO 1: UM ÚNICO INDICADOR SELECIONADO            -->
+              <!-- ========================================================= -->
+              <table class="data-table" ng-if="!respostaBackend.modoTodos">
+                <thead>
+                  <tr>
+                    <th style="width: 35%;" ng-click="ordenarTabela('label')" ng-class="{'th-active': colunaOrdenada === 'label'}">
+                      {{ respostaBackend.nomeDimensao }} {{ getIconeOrdenacao('label') }}
+                    </th>
+                    <th class="text-right" ng-click="ordenarTabela('valorRaw')" ng-class="{'th-active': colunaOrdenada === 'valorRaw'}">
+                      {{ respostaBackend.nomeIndicador }} (Atual) {{ getIconeOrdenacao('valorRaw') }}
+                    </th>
+                    <th class="text-right" ng-if="filtrosTop.modoVisao === 'comparativo'" ng-click="ordenarTabela('valorAnteriorRaw')" ng-class="{'th-active': colunaOrdenada === 'valorAnteriorRaw'}">
+                      Anterior ({{ infoPeriodo.rotuloAnterior }}) {{ getIconeOrdenacao('valorAnteriorRaw') }}
+                    </th>
+                    <th class="text-right" ng-if="filtrosTop.modoVisao === 'comparativo'" ng-click="ordenarTabela('variacao')" ng-class="{'th-active': colunaOrdenada === 'variacao'}">
+                      Variação (%) {{ getIconeOrdenacao('variacao') }}
+                    </th>
+                    <th class="text-right" style="width: 15%;" ng-if="!respostaBackend.isPercentual && !respostaBackend.isDecimal">Participação (%)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr ng-repeat="item in dadosFiltradosTabela track by item.label"
+                      data-label="{{ item.label }}"
+                      class="linha-drill"
+                      ng-click="abrirDrillDown(item)"
+                      title="Clique para ver o detalhamento e a evolução mensal deste item"
+                      ng-class="{'linha-focada': item.label === linhaFocada}">
+                    <td><strong>{{ item.label }}</strong></td>
+
+                    <td class="text-right cell-num" ng-class="'ind-' + config.indicador">{{ item.valorFormatado }}</td>
+
+                    <td class="text-right cell-num cell-num-muted" ng-if="filtrosTop.modoVisao === 'comparativo'">{{ item.valorAnteriorFormatado }}</td>
+
+                    <td class="text-right" ng-if="filtrosTop.modoVisao === 'comparativo'">
+                      <span ng-class="{'text-green': item.variacao > 0, 'text-red': item.variacao < 0, 'text-muted': item.variacao === 0}">
+                        <span ng-if="item.variacao > 0">▲ +</span>
+                        <span ng-if="item.variacao < 0">▼ </span>
+                        {{ item.variacao | number:2 }}%
+                      </span>
+                    </td>
+
+                    <td class="text-right" style="min-width: 140px;" ng-if="!respostaBackend.isPercentual && !respostaBackend.isDecimal">
+                      <div class="progress-wrap" title="Participação no total do período">
+                        <span class="progress-val font-mono">{{ calcularParticipacaoPercentual(item.valorRaw) | number:1 }}%</span>
+                        <div class="progress-bar-container">
+                          <div class="progress-bar-fill" ng-style="{'width': (calcularParticipacaoPercentual(item.valorRaw) > 100 ? 100 : calcularParticipacaoPercentual(item.valorRaw)) + '%'}"></div>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr ng-if="dadosFiltradosTabela.length === 0">
+                    <td colspan="5" class="text-center" style="padding: 24px; color: var(--text-muted);">
+                      Nenhum resultado encontrado para a busca "<strong>{{ filtrosBusca.tabela }}</strong>".
+                    </td>
+                  </tr>
+                </tbody>
+                <tfoot ng-if="dadosFiltradosTabela.length > 0">
+                  <tr>
+                    <td>TOTAL ({{ dadosFiltradosTabela.length }} itens)</td>
+                    <td class="text-right"><span class="cell-num" ng-class="'ind-' + config.indicador">{{ totaisTabela.valorFormatado }}</span></td>
+                    <td class="text-right" ng-if="filtrosTop.modoVisao === 'comparativo'"><span class="cell-num cell-num-muted">{{ totaisTabela.anteriorFormatado }}</span></td>
+                    <td class="text-right" ng-if="filtrosTop.modoVisao === 'comparativo'" ng-class="{'text-green': totaisTabela.variacao >= 0, 'text-red': totaisTabela.variacao < 0}">
+                      {{ totaisTabela.variacao >= 0 ? '▲ +' : '▼ ' }}{{ totaisTabela.variacao | number:1 }}%
+                    </td>
+                    <td class="text-right font-mono" ng-if="!respostaBackend.isPercentual && !respostaBackend.isDecimal">{{ totaisTabela.participacao | number:1 }}%</td>
+                  </tr>
+                </tfoot>
+              </table>
+
+              <!-- ========================================================= -->
+              <!-- TABELA MODO 2: TODOS OS INDICADORES (MULTIVARIADA)       -->
+              <!-- ========================================================= -->
+              <table class="data-table tbl-multi" ng-if="respostaBackend.modoTodos">
+                <thead>
+                  <tr>
+                    <th ng-click="ordenarTabela('label')" ng-class="{'th-active': colunaOrdenada === 'label'}" style="min-width: 170px;">
+                      {{ respostaBackend.nomeDimensao }} {{ getIconeOrdenacao('label') }}
+                    </th>
+                    <th ng-repeat="col in getColunasVisiveis()" class="text-right"
+                        ng-click="ordenarTabela(col.key)" ng-class="{'th-active': colunaOrdenada === col.key}">
+                      {{ col.rotulo }} {{ getIconeOrdenacao(col.key) }}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr ng-repeat="item in dadosFiltradosTabela track by item.label"
+                      data-label="{{ item.label }}"
+                      class="linha-drill"
+                      ng-click="abrirDrillDown(item)"
+                      title="Clique para ver o detalhamento e a evolução mensal deste item"
+                      ng-class="{'linha-focada': item.label === linhaFocada, 'anomalia': destacarAnomalias && item.__anomalia}">
+                    <td>
+                      <strong>{{ item.label }}</strong>
+                      <span class="anomalia-badge" ng-if="destacarAnomalias && item.__anomalia" title="Variação forte detectada neste registro" aria-label="Anomalia">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                      </span>
+                    </td>
+                    <td ng-repeat="col in getColunasVisiveis()" class="text-right">
+                      <span class="cell-num" ng-class="'ind-' + col.key">{{ item[col.key + '_fmt'] }}</span>
+                      <div ng-if="filtrosTop.modoVisao === 'comparativo' && item[col.key + '_var'] != null"
+                           class="delta-celula"
+                           ng-class="classeDelta(item, col)">
+                        {{ item[col.key + '_var'] > 0 ? '▲ +' : (item[col.key + '_var'] < 0 ? '▼ ' : '● ') }}{{ item[col.key + '_var'] | number:1 }}%
+                      </div>
+                    </td>
+                  </tr>
+                  <tr ng-if="dadosFiltradosTabela.length === 0">
+                    <td colspan="{{ definicaoColunas.length + 1 }}" class="text-center" style="padding: 24px; color: var(--text-muted);">
+                      Nenhum resultado encontrado para a busca "<strong>{{ filtrosBusca.tabela }}</strong>".
+                    </td>
+                  </tr>
+                </tbody>
+                <tfoot ng-if="dadosFiltradosTabela.length > 0">
+                  <tr>
+                    <td>TOTAL ({{ dadosFiltradosTabela.length }})</td>
+                    <td ng-repeat="col in getColunasVisiveis()" class="text-right">
+                      <span class="cell-num" ng-class="'ind-' + col.key">{{ totaisTabela[col.key + '_fmt'] }}</span>
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+
+            </div>
+
+            <!-- DICIONÁRIO DE INDICADORES -->
+            <div class="dicionario-panel" ng-if="painelDicionarioAberto">
+              <dl>
+                <dt ng-repeat-start="(chave, def) in dicionarioIndicadores"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>{{ def.nome }}</dt>
+                <dd ng-repeat-end>{{ def.descricao }}</dd>
+              </dl>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- SEÇÃO DE RESUMO COMPARATIVO NO RODAPÉ DO DASHBOARD           -->
+        <!-- ============================================================= -->
+        <div class="comparative-summary-card" ng-if="filtrosTop.modoVisao === 'comparativo'">
+          <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 8px;">
+            <h4 style="margin: 0; font-size: 13px; color: var(--primary); font-weight: 800;">
+              Sumário Comparativo: {{ infoPeriodo.rotuloAtual }} vs. {{ infoPeriodo.rotuloAnterior }}
+            </h4>
+            <span style="font-size: 11px; color: var(--text-muted); font-weight: 600;">
+              Dimensão: {{ respostaBackend.nomeDimensao }}
+            </span>
+          </div>
+
+          <div class="summary-grid" ng-if="respostaBackend.modoTodos">
+            <div class="summary-item">
+              <div class="summary-title">Dias Etapa</div>
+              <div class="summary-val-atual" style="color: var(--color-dias-etapa);">{{ kpis.diasEtapaFormatado }}</div>
+              <div class="summary-val-ant">
+                Anterior: {{ kpis.diasEtapaAnteriorFormatado }}
+                <strong ng-class="{'text-green': kpis.varDiasEtapa <= 0, 'text-red': kpis.varDiasEtapa > 0}">
+                  ({{ kpis.varDiasEtapa >= 0 ? '+' : '' }}{{ kpis.varDiasEtapa | number:1 }}%)
+                </strong>
+              </div>
+            </div>
+
+            <div class="summary-item">
+              <div class="summary-title">Média Etapa</div>
+              <div class="summary-val-atual" style="color: var(--color-media-etapa);">{{ kpis.mediaEtapaFormatado }} dias</div>
+              <div class="summary-val-ant">
+                Anterior: {{ kpis.mediaEtapaAnteriorFormatado }} dias
+                <strong ng-class="{'text-green': kpis.varMediaEtapa <= 0, 'text-red': kpis.varMediaEtapa > 0}">
+                  ({{ kpis.varMediaEtapa >= 0 ? '+' : '' }}{{ kpis.varMediaEtapa | number:1 }}%)
+                </strong>
+              </div>
+            </div>
+
+            <div class="summary-item">
+              <div class="summary-title">Dias Alta</div>
+              <div class="summary-val-atual" style="color: var(--color-dias-alta);">{{ kpis.diasAltaFormatado }}</div>
+              <div class="summary-val-ant">
+                Anterior: {{ kpis.diasAltaAnteriorFormatado }}
+                <strong ng-class="{'text-green': kpis.varDiasAlta <= 0, 'text-red': kpis.varDiasAlta > 0}">
+                  ({{ kpis.varDiasAlta >= 0 ? '+' : '' }}{{ kpis.varDiasAlta | number:1 }}%)
+                </strong>
+              </div>
+            </div>
+
+            <div class="summary-item">
+              <div class="summary-title">Média Alta</div>
+              <div class="summary-val-atual" style="color: var(--color-media-alta);">{{ kpis.mediaAltaFormatado }} dias</div>
+              <div class="summary-val-ant">
+                Anterior: {{ kpis.mediaAltaAnteriorFormatado }} dias
+                <strong ng-class="{'text-green': kpis.varMediaAlta <= 0, 'text-red': kpis.varMediaAlta > 0}">
+                  ({{ kpis.varMediaAlta >= 0 ? '+' : '' }}{{ kpis.varMediaAlta | number:1 }}%)
+                </strong>
+              </div>
+            </div>
+
+            <div class="summary-item">
+              <div class="summary-title">Qtde Contas</div>
+              <div class="summary-val-atual" style="color: var(--color-qtd-contas);">{{ kpis.totalContasFormatado }}</div>
+              <div class="summary-val-ant">
+                Anterior: {{ kpis.contasAnteriorFormatado }}
+                <strong ng-class="{'text-green': kpis.varContas >= 0, 'text-red': kpis.varContas < 0}">
+                  ({{ kpis.varContas >= 0 ? '+' : '' }}{{ kpis.varContas | number:1 }}%)
+                </strong>
+              </div>
+            </div>
+          </div>
+
+          <div class="summary-grid" ng-if="!respostaBackend.modoTodos">
+            <div class="summary-item">
+              <div class="summary-title">Total {{ respostaBackend.nomeIndicador }} (Atual)</div>
+              <div class="summary-val-atual" style="color: var(--primary);">{{ kpis.somaTotalFormatted }}</div>
+              <div class="summary-val-ant">Período: {{ infoPeriodo.rotuloAtual }}</div>
+            </div>
+
+            <div class="summary-item">
+              <div class="summary-title">Total {{ respostaBackend.nomeIndicador }} (Anterior)</div>
+              <div class="summary-val-atual" style="color: var(--text-muted);">{{ kpis.somaAnteriorFormatted }}</div>
+              <div class="summary-val-ant">Período: {{ infoPeriodo.rotuloAnterior }}</div>
+            </div>
+
+            <div class="summary-item">
+              <div class="summary-title">Variação Líquida Global</div>
+              <div class="summary-val-atual" ng-class="{'text-green': kpis.variacaoGlobal >= 0, 'text-red': kpis.variacaoGlobal < 0}">
+                {{ kpis.variacaoGlobal >= 0 ? '▲ +' : '▼ ' }}{{ kpis.variacaoGlobal | number:2 }}%
+              </div>
+              <div class="summary-val-ant">Desempenho Geral no Período</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- /CONTEÚDO PRINCIPAL -->
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <!-- ============================================================= -->
+<!-- MODAL: NOMEAR VISÃO SALVA                                     -->
+<!-- ============================================================= -->
+<div class="modal-overlay" ng-if="modalViewAberto" ng-click="$event.target === $event.currentTarget && cancelarSalvarView()">
+  <div class="modal-box" style="width: min(440px, 100%);" role="dialog" aria-modal="true" aria-label="Nomear visão salva">
+    <div class="modal-header">
+      <h3>
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+        Salvar visão atual
+      </h3>
+      <button type="button" class="modal-close" ng-click="cancelarSalvarView()" aria-label="Fechar">✕</button>
+    </div>
+    <div class="modal-body">
+      <label for="inputNomeView" style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); display:block; margin-bottom:6px;">Nome da visão</label>
+      <input id="inputNomeView" class="modal-input-nome" type="text" ng-model="novaView.nome" maxlength="60"
+             ng-keydown="$event.keyCode === 13 && confirmarSalvarView()">
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn-action" ng-click="cancelarSalvarView()">Cancelar</button>
+      <button type="button" class="btn-action btn-primary" ng-click="confirmarSalvarView()">Salvar visão</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================= -->
+<!-- MODAL: DRILL-DOWN DO ITEM (DETALHE + EVOLUÇÃO MENSAL)         -->
+<!-- ============================================================= -->
+<div class="modal-overlay" ng-if="modalDrillAberto" ng-click="$event.target === $event.currentTarget && fecharDrillDown()">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-label="Detalhamento do item">
+    <div class="modal-header">
+      <h3>
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        {{ drillItem.label }}
+      </h3>
+      <button type="button" class="modal-close" ng-click="fecharDrillDown()" aria-label="Fechar">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="drill-kpis" ng-if="respostaBackend.modoTodos">
+        <div class="drill-kpi"><div class="rot">Qtde Contas</div><div class="val ind-qtd_contas">{{ drillItem.qtd_contas_fmt }}</div></div>
+        <div class="drill-kpi"><div class="rot">Dias Etapa</div><div class="val ind-dias_etapa">{{ drillItem.dias_etapa_fmt }}</div></div>
+        <div class="drill-kpi"><div class="rot">Média Etapa</div><div class="val ind-media_etapa">{{ drillItem.media_etapa_fmt }}</div></div>
+        <div class="drill-kpi"><div class="rot">Dias Alta</div><div class="val ind-dias_alta">{{ drillItem.dias_alta_fmt }}</div></div>
+        <div class="drill-kpi"><div class="rot">Média Alta</div><div class="val ind-media_alta">{{ drillItem.media_alta_fmt }}</div></div>
+      </div>
+      <div class="drill-kpis" ng-if="!respostaBackend.modoTodos">
+        <div class="drill-kpi"><div class="rot">{{ respostaBackend.nomeIndicador }}</div><div class="val ind-{{ config.indicador }}">{{ drillItem.valorFormatado }}</div></div>
+        <div class="drill-kpi" ng-if="filtrosTop.modoVisao !== 'normal' && drillItem.valorAnteriorFormatado"><div class="rot">Anterior</div><div class="val cell-num-muted">{{ drillItem.valorAnteriorFormatado }}</div></div>
+        <div class="drill-kpi" ng-if="!respostaBackend.isPercentual && !respostaBackend.isDecimal"><div class="rot">Participação</div><div class="val">{{ calcularParticipacaoPercentual(drillItem.valorRaw) | number:1 }}%</div></div>
+      </div>
+
+      <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; letter-spacing: 0.4px;">
+        Evolução mensal · {{ tendenciaAno.valor }}
+      </div>
+      <div class="chart-filter-bar" ng-if="drillCarregando" style="justify-content:center; color: var(--text-muted); font-size: 11.5px;">
+        Carregando evolução mensal...
+      </div>
+      <div class="chart-filter-bar" ng-if="!drillCarregando && !drillSerie" style="justify-content:center; color: var(--text-muted); font-size: 11.5px;">
+        Série mensal indisponível para este item.
+      </div>
+      <div class="drill-chart-wrap" ng-if="drillSerie">
+        <canvas id="chartDrill"></canvas>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn-action" ng-click="fecharDrillDown()">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST FEEDBACK FLUTUANTE -->
+   <div class="toast-msg" ng-if="toastMensagem" ng-class="'toast-' + toastTipo" role="status" aria-live="polite">
+     <span class="toast-dot"></span>
+     <span>{{ toastMensagem }}</span>
+   </div>
+
+</div>
+
+<!-- ============================================================= -->
+<!-- SCRIPTS ANGULARJS & CHART.JS ENGINE                           -->
+<!-- ============================================================= -->
+<!-- ApiService externalizado conforme API_CONTRATO.md (js/api.service.js) -->
+<script src="js/api.service.js"></script>
+<script src="js/dashboard.controller.js"></script>
+</body>
+</html>
