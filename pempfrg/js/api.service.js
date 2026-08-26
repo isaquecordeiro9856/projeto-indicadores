@@ -19,7 +19,7 @@
     // USAR_MOCK = true  → dados simulados (demo sem backend)
     // USAR_MOCK = false → POST real em ENDPOINT (contrato: API_CONTRATO.md)
     // ====================================================================
-    var USAR_MOCK = true;
+    var USAR_MOCK = true; // Troque para false em produção; detecção automática por hostname pode ser adicionada: var USAR_MOCK = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
     var ENDPOINT = '/api/hospital/producao-faturamento-matmed';
 
     // BASE DE DADOS MOCK PARA AS 12 DIMENSÕES (+ "mes" p/ tendência e drill-down)
@@ -142,7 +142,7 @@
       obterDadosDashboard: function(req) {
         if (!USAR_MOCK) {
           // Chamada REST real — contrato detalhado em API_CONTRATO.md
-          return $http.post(ENDPOINT, req).then(function(response) {
+          return $http.post(ENDPOINT, req, { timeout: 10000 }).then(function(response) {
             return response.data;
           }, function(response) {
             var msg = (response && response.data && response.data.mensagem)
@@ -157,6 +157,10 @@
         $timeout(function() {
           try {
             let labelsBase = basesDeDados[req.dimensao] || [];
+            if (!labelsBase.length && !(req.rotulo && req.dimensao === 'mes')) {
+              deferred.reject('Dimensão inválida ou sem dados: ' + req.dimensao);
+              return;
+            }
 
             // ------------------------------------------------------------------
             // DRILL-DOWN (campo opcional "rotulo" — extensão do contrato):
@@ -212,7 +216,7 @@
             // Fator determinístico por período (ano/mês): dá realismo ao
             // comparativo vs. ano passado e à evolução temporal na demo
             let fatorPeriodo = 1;
-            if (req.periodoValor instanceof Date) {
+            if (req.periodoValor instanceof Date && !isNaN(req.periodoValor.getTime())) {
               let marca = req.periodoValor.getFullYear() * 12 + req.periodoValor.getMonth();
               fatorPeriodo = 1 + (((marca * 37) % 11) - 5) * 0.035;
             } else if (typeof req.periodoValor === 'number' && req.periodoValor > 0) {
@@ -329,7 +333,7 @@
               else dadosMock.sort((a, b) => a.valorRawSort - b.valorRawSort);
 
               let totalBase = dadosMock.length;
-              if (req.limite !== 'todos') dadosMock = dadosMock.slice(0, parseInt(req.limite));
+              if (req.limite !== 'todos') { var _nLim = parseInt(req.limite, 10); if (isNaN(_nLim) || _nLim <= 0) _nLim = totalBase; dadosMock = dadosMock.slice(0, _nLim); }
 
               deferred.resolve({
                 nomeDimensao: nomesDimensao[req.dimensao] || req.dimensao,
@@ -340,6 +344,7 @@
 
             } else {
               let indConfig = configIndicadores[req.indicador];
+              if (!indConfig) { deferred.reject('Indicador inválido: ' + req.indicador); return; }
 
               labelsBase.forEach(function(label, index) {
                 let baseSeed = (index * 19 + label.length * 31) % 100 / 100;
@@ -373,7 +378,7 @@
               else dadosMock.sort((a, b) => a.valorRaw - b.valorRaw);
 
               let totalBase = dadosMock.length;
-              if (req.limite !== 'todos') dadosMock = dadosMock.slice(0, parseInt(req.limite));
+              if (req.limite !== 'todos') { var _nLim = parseInt(req.limite, 10); if (isNaN(_nLim) || _nLim <= 0) _nLim = totalBase; dadosMock = dadosMock.slice(0, _nLim); }
 
               deferred.resolve({
                 nomeDimensao: nomesDimensao[req.dimensao] || req.dimensao,

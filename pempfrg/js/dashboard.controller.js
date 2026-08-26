@@ -25,6 +25,16 @@ var app = angular.module('DashboardApp');
 
     let dataHoje = new Date();
 
+    // Helper: $apply seguro (evita "$digest already in progress")
+    function safeApply(fn) {
+      if ($scope.$phase || ($scope.$root && $scope.$root.$phase)) {
+        if (fn) $scope.$eval(fn);
+      } else {
+        $scope.$apply(fn);
+      }
+    }
+    function isValidDate(d) { return d instanceof Date && !isNaN(d.getTime()); }
+
     function criarDateMes(ano, mes0indexed) {
       return new Date(ano, mes0indexed, 1);
     }
@@ -152,8 +162,8 @@ var app = angular.module('DashboardApp');
           if (['dia', 'mes', 'ano'].indexOf(salvo.tipoPeriodo) !== -1) $scope.filtrosTop.tipoPeriodo = salvo.tipoPeriodo;
           if (MODOS_VISAO_VALIDOS.indexOf(salvo.modoVisao) !== -1) $scope.filtrosTop.modoVisao = salvo.modoVisao;
           if (['asc', 'desc'].indexOf(salvo.ordem) !== -1) $scope.filtrosTop.ordem = salvo.ordem;
-          if (salvo.limite) $scope.filtrosTop.limite = String(salvo.limite);
-          if (typeof salvo.dataAno === 'number') $scope.filtrosTop.dataAno = salvo.dataAno;
+          if (salvo.limite && ['5','10','25','50','todos'].indexOf(String(salvo.limite)) !== -1) $scope.filtrosTop.limite = String(salvo.limite);
+          if (typeof salvo.dataAno === 'number' && salvo.dataAno >= 2000 && salvo.dataAno <= 2100) $scope.filtrosTop.dataAno = salvo.dataAno;
 
           if (typeof salvo.dataDia === 'string') {
             var p = salvo.dataDia.split('-');
@@ -329,15 +339,16 @@ var app = angular.module('DashboardApp');
     };
 
     // Fecha dropdowns ao clicar fora deles (handler único)
-    document.addEventListener('click', function(ev) {
+    var handlerClickFora = function(ev) {
       var alvo = ev.target;
       if (!alvo || !alvo.closest) return;
       if (!alvo.closest('.exportar-dropdown') && !alvo.closest('.colunas-dropdown') &&
           !alvo.closest('.views-dropdown') && !alvo.closest('.metas-bar') &&
           !alvo.closest('.btn-dicionario') && !alvo.closest('.dicionario-panel')) {
-        $scope.$apply(function() { $scope.fecharMenusFlutuantes(); });
+        safeApply(function() { $scope.fecharMenusFlutuantes(); });
       }
-    });
+    };
+    document.addEventListener('click', handlerClickFora);
 
     // DETECÇÃO DINÂMICA DO PRESET ATIVO (COMPARA FILTROS COM A DEFINIÇÃO)
     $scope.isPresetAtivo = function(preset) {
@@ -486,7 +497,9 @@ var app = angular.module('DashboardApp');
     };
 
     // ALTERNAR TIPO DE GRÁFICO
+    function isTipoGraficoValido(t) { return ['horizontalBar','bar','doughnut'].indexOf(t) !== -1; }
     $scope.alterarTipoGrafico = function(tipo) {
+      if (!isTipoGraficoValido(tipo)) return;
       $scope.tipoGraficoVisual = tipo;
       salvarEstado();
       if ($scope.respostaBackend) {
@@ -503,6 +516,9 @@ var app = angular.module('DashboardApp');
     };
 
     // Normalização compartilhada (minúsculas + sem acentos)
+    function cssEscapeFallback(s) {
+      return String(s).replace(/[^a-zA-Z0-9_-]/g, function(ch){ return '\\' + ch; });
+    }
     function normalizarTexto(txt) {
       return txt ? txt.toString().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "";
     }
@@ -1055,7 +1071,7 @@ var app = angular.module('DashboardApp');
       $scope.linhaFocada = label;
 
       $timeout(function() {
-        var seletor = 'tr[data-label="' + (window.CSS && CSS.escape ? CSS.escape(label) : label.replace(/"/g, '\\"')) + '"]';
+        var seletor = 'tr[data-label="' + (window.CSS && CSS.escape ? CSS.escape(label) : cssEscapeFallback(label).replace(/"/g, '\\"')) + '"]';
         var el = document.querySelector(seletor);
         if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }, 80);
@@ -1117,8 +1133,8 @@ var app = angular.module('DashboardApp');
       if (['dia', 'mes', 'ano'].indexOf(est.tipoPeriodo) !== -1) $scope.filtrosTop.tipoPeriodo = est.tipoPeriodo;
       if (MODOS_VISAO_VALIDOS.indexOf(est.modoVisao) !== -1) $scope.filtrosTop.modoVisao = est.modoVisao;
       if (['asc', 'desc'].indexOf(est.ordem) !== -1) $scope.filtrosTop.ordem = est.ordem;
-      if (est.limite) $scope.filtrosTop.limite = String(est.limite);
-      if (typeof est.dataAno === 'number') $scope.filtrosTop.dataAno = est.dataAno;
+      if (est.limite && ['5','10','25','50','todos'].indexOf(String(est.limite)) !== -1) $scope.filtrosTop.limite = String(est.limite);
+      if (typeof est.dataAno === 'number' && est.dataAno >= 2000 && est.dataAno <= 2100) $scope.filtrosTop.dataAno = est.dataAno;
       if (typeof est.dataDia === 'string') {
         var p = est.dataDia.split('-');
         if (p.length === 3 && !isNaN(Date.parse(est.dataDia))) $scope.filtrosTop.dataDia = new Date(+p[0], +p[1] - 1, +p[2]);
@@ -1238,7 +1254,7 @@ var app = angular.module('DashboardApp');
       }
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(url).then(function() {
-          $scope.$apply(function() { $scope.mostrarToast('Link da visão copiado! Quem abrir verá exatamente estes filtros.', 'sucesso'); });
+          safeApply(function() { $scope.mostrarToast('Link da visão copiado! Quem abrir verá exatamente estes filtros.', 'sucesso'); });
         }, fallbackCopia);
       } else {
         fallbackCopia();
@@ -2190,7 +2206,7 @@ var app = angular.module('DashboardApp');
           datasets1.push({
             label: rotuloAtual,
             data: dadosResp.dados.map(d => d.valorRaw),
-            backgroundColor: paletaDoughnut.slice(0, dadosResp.dados.length),
+            backgroundColor: dadosResp.dados.map(function(_, i){ return paletaDoughnut[i % paletaDoughnut.length]; }),
             borderWidth: 2,
             borderColor: cg.bordaRosca,
             isMoeda: dadosResp.isMoeda,
@@ -2369,7 +2385,7 @@ var app = angular.module('DashboardApp');
         // Aguarda um frame de layout antes de medir/pintar (evita canvas
         // com largura/altura defasada no modo multivariado)
         requestAnimationFrame(function() {
-          $scope.$apply(function() {
+          safeApply(function() {
             if (chart1 || chart2) renderizarGraficos($scope.respostaBackend);
             if ($scope.tendenciaTemDados && !$scope.tendenciaCarregando) renderizarTendencia();
             if ($scope.modalDrillAberto && $scope.drillSerie) renderizarChartDrill();
@@ -2400,12 +2416,31 @@ var app = angular.module('DashboardApp');
         var w = document.documentElement.clientWidth;
         if (w !== ultLargura) { ultLargura = w; reagendarRenderGraficos(); }
       }, 400);
-    }
+    }    // Limpeza de listeners globais ao destruir o escopo (evita memory leak)
+    $scope.$on('$destroy', function() {
+      try { document.removeEventListener('click', handlerClickFora); } catch(e) {}
+      try { document.removeEventListener('keydown', handlerTecladoGlobal); } catch(e) {}
+      try { window.removeEventListener('resize', reagendarRenderGraficos); } catch(e) {}
+      try { window.removeEventListener('orientationchange', reagendarRenderGraficos); } catch(e) {}
+      try { if (window.visualViewport) window.visualViewport.removeEventListener('resize', reagendarRenderGraficos); } catch(e) {}
+      try { if (_resizeObserverInst && _resizeAlvo) _resizeObserverInst.unobserve(_resizeAlvo); } catch(e) {}
+      try { if (_resizeObserverInst) _resizeObserverInst.disconnect(); } catch(e) {}
+      try { if (typeof _fallbackInterval !== 'undefined' && _fallbackInterval) clearInterval(_fallbackInterval); } catch(e) {}
+      try { if (resizeTimer) $timeout.cancel(resizeTimer); } catch(e) {}
+      try { if (debounceTimer) $timeout.cancel(debounceTimer); } catch(e) {}
+      try { if (toastTimer) $timeout.cancel(toastTimer); } catch(e) {}
+      try { if (chart1) { chart1.destroy(); chart1=null; } } catch(e) {}
+      try { if (chart2) { chart2.destroy(); chart2=null; } } catch(e) {}
+      try { if (typeof chart3 !== 'undefined' && chart3) { chart3.destroy(); chart3=null; } } catch(e) {}
+      try { if (typeof chartDrill !== 'undefined' && chartDrill) { chartDrill.destroy(); chartDrill=null; } } catch(e) {}
+    });
+
+
 
     // ----------------------------------------------------------------------
     // ATALHOS DE TECLADO GLOBAIS
     // ----------------------------------------------------------------------
-    document.addEventListener('keydown', function(ev) {
+    var handlerTecladoGlobal = function(ev) {
       var alvo = ev.target || {};
       var tag = (alvo.tagName || '').toLowerCase();
       var digitando = tag === 'input' || tag === 'textarea' || tag === 'select' || alvo.isContentEditable;
@@ -2415,7 +2450,7 @@ var app = angular.module('DashboardApp');
             $scope.filtrosBusca.tabela || $scope.filtroSidebar ||
             $scope.menuExportarAberto || $scope.painelColunasAberto ||
             $scope.painelMetasAberto || $scope.painelDicionarioAberto) {
-          $scope.$apply(function() {
+          safeApply(function() {
             $scope.fecharMenusFlutuantes();
             $scope.fecharDrillDown();
             $scope.cancelarSalvarView();
@@ -2436,7 +2471,7 @@ var app = angular.module('DashboardApp');
 
       if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'e') {
         ev.preventDefault();
-        $scope.$apply(function() { $scope.exportarCSV(); });
+        safeApply(function() { $scope.exportarCSV(); });
         return;
       }
 
@@ -2447,6 +2482,7 @@ var app = angular.module('DashboardApp');
           inpTabela.focus();
         }
       }
-    });
+      };
+    document.addEventListener('keydown', handlerTecladoGlobal);
 
   });

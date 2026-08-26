@@ -40,7 +40,7 @@
       --color-pct-adicional: #7c3aed;      /* Violet */
     }
 
-    * { box-sizing: border-box; }
+    *, *::before, *::after { box-sizing: border-box; }
     
     body {
       margin: 0;
@@ -293,6 +293,7 @@
     /* ------------------------------------------------------------- */
     .main-content {
       flex: 1;
+      min-width: 0;
       display: flex;
       flex-direction: column;
       background-color: var(--bg-body);
@@ -684,7 +685,7 @@
     /* ÁREA DOS GRÁFICOS */
     .charts-grid {
       display: grid;
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
       gap: 14px;
     }
 
@@ -712,6 +713,7 @@
       background-color: #fafcff;
       min-width: 0;
       max-width: 100%;
+      width: 100%;
     }
 
     .chart-scroll-wrapper::-webkit-scrollbar { width: 6px; }
@@ -720,6 +722,7 @@
     .chart-container-inner {
       width: 100%;
       max-width: 100%;
+      min-width: 0;
       margin: 0 auto;
       position: relative;
     }
@@ -1201,6 +1204,12 @@
     }
 
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    @media (max-width: 380px) {
+      .kpi-grid { grid-template-columns: 1fr; }
+      .kpi-value { font-size: 17px; }
+      .colunas-painel { grid-template-columns: 1fr; }
+    }
 
     @media (max-width: 700px) {
       body { font-size: 13px; }
@@ -2237,4 +2246,18 @@
       .card + .card {
         page-break-before: auto !important;
       }
+    }
+
+
+    /* Acessibilidade: conteúdo apenas para leitores de tela */
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
     }
