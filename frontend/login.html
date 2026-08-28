@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="pt-BR" ng-app="DashboardApp">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TASY Analytics - Login</title>
+  <link rel="stylesheet" href="css/common.css">
+  <script src="js/angular.min.js"></script>
+  <script>
+    angular.module('DashboardApp', []);
+  </script>
+  <script src="js/auth.service.js?v=2"></script>
+</head>
+<body ng-controller="LoginController">
+  <div class="login-page">
+    <div class="login-card">
+      <h1>TASY Analytics</h1>
+      <p class="subtitle">Sistema de Indicadores Hospitalares</p>
+
+      <div class="error-msg" ng-class="{'visible': erro}">{{erro}}</div>
+
+      <form ng-submit="fazerLogin()">
+        <div class="form-group">
+          <label for="usuario">Usuário</label>
+          <input type="text" id="usuario" ng-model="nm_usuario" placeholder="Digite seu login" autofocus required>
+        </div>
+        <div class="form-group">
+          <label for="senha">Senha</label>
+          <input type="password" id="senha" ng-model="ds_senha" placeholder="Digite sua senha" required>
+        </div>
+        <button type="submit" class="btn btn-primary" ng-disabled="carregando || !nm_usuario || !ds_senha">
+          {{carregando ? 'Entrando...' : 'Entrar'}}
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    angular.module('DashboardApp').controller('LoginController', function($scope, AuthService) {
+      $scope.nm_usuario = '';
+      $scope.ds_senha = '';
+      $scope.erro = '';
+      $scope.carregando = false;
+
+      if (AuthService.isLoggedIn()) {
+        window.location.href = 'hub.html';
+        return;
+      }
+
+      $scope.fazerLogin = function() {
+        $scope.erro = '';
+        $scope.carregando = true;
+
+        AuthService.login($scope.nm_usuario, $scope.ds_senha).then(function() {
+          window.location.href = 'hub.html';
+        }).catch(function(response) {
+          $scope.carregando = false;
+          if (response && response.data && response.data.mensagem) {
+            $scope.erro = response.data.mensagem;
+          } else {
+            $scope.erro = 'Erro ao conectar com o servidor';
+          }
+        });
+      };
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="pt-BR" ng-app="DashboardApp">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TASY Analytics - Painéis</title>
+  <link rel="stylesheet" href="css/common.css">
+  <script src="js/angular.min.js"></script>
+  <script>
+    angular.module('DashboardApp', []);
+  </script>
+  <script src="js/auth.service.js?v=2"></script>
+  <script src="js/autorizacao.service.js?v=2"></script>
+</head>
+<body ng-controller="HubController">
+  <div class="hub-page">
+    <div class="hub-header">
+      <h1>TASY Analytics</h1>
+      <div class="user-info">
+        <span>{{usuario.ds_usuario}} ({{perfil.descricao}})</span>
+        <button class="btn-logout" ng-click="logout()">Sair</button>
+      </div>
+    </div>
+
+    <div class="hub-content">
+      <h2>Selecione um painel</h2>
+
+      <div class="no-data" ng-if="dashboards.length === 0">
+        Nenhum painel disponível para o seu perfil. Contate o administrador.
+      </div>
+
+      <div class="dashboard-grid">
+        <a class="dashboard-card" ng-repeat="d in dashboards" href="{{d.arquivo}}">
+          <div class="card-icon {{d.cssClass}}">{{d.icon}}</div>
+          <div class="card-title">{{d.nome}}</div>
+          <div class="card-desc">{{d.descricao}}</div>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    angular.module('DashboardApp').controller('HubController', function($scope, $http, AuthService, AutorizacaoService) {
+      if (!AuthService.checkAuth()) return;
+
+      $scope.usuario = AuthService.getUsuario();
+      $scope.perfil = AuthService.getPerfil();
+      $scope.dashboards = AutorizacaoService.getDashboardsDisponiveis();
+
+      // Atualiza perfil do servidor para pegar dashboards corretos após correção de permissoes
+      var token = AuthService.getToken();
+      $http.get('/api/auth/me', { headers: { 'Authorization': 'Bearer ' + token } }).then(function(resp) {
+        if (resp.data && resp.data.perfil) {
+          $scope.perfil = resp.data.perfil;
+          $scope.usuario = resp.data.usuario;
+          localStorage.setItem('tasy_perfil', JSON.stringify(resp.data.perfil));
+          localStorage.setItem('tasy_usuario', JSON.stringify(resp.data.usuario));
+          $scope.dashboards = AutorizacaoService.getDashboardsDisponiveis();
+        }
+      });
+
+      $scope.logout = function() {
+        AuthService.logout();
+      };
+    });
+  </script>
+</body>
+</html>
