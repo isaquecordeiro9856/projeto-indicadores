@@ -11,6 +11,11 @@ angular.module('DashboardApp').factory('AutorizacaoService', function(AuthServic
       return perfil ? !!perfil.exportar : false;
     },
 
+    ehDirecao: function() {
+      var perfil = AuthService.getPerfil();
+      return perfil ? !!perfil.direcao : false;
+    },
+
     podeConfigurar: function() {
       var perfil = AuthService.getPerfil();
       return perfil ? !!perfil.configurar : false;
@@ -21,6 +26,7 @@ angular.module('DashboardApp').factory('AutorizacaoService', function(AuthServic
       if (!perfil || !perfil.dashboards) return [];
 
       var todos = [
+        { id: 'geral', nome: 'Painel Geral (Direção)', descricao: 'Visão consolidada do hospital: financeiro, atendimentos, ocupação, produção, custos, compras e manutenção', icon: 'G', cssClass: 'icon-geral', arquivo: 'dashboard-geral.html' },
         { id: 'enfermagem', nome: 'Painel Enfermagem', descricao: 'Pacientes, permanência, leitos e assistência de enfermagem', icon: 'E', cssClass: 'icon-enfermagem', arquivo: 'dashboard-enfermagem.html' },
         { id: 'medico', nome: 'Painel Médico', descricao: 'Procedimentos, produtividade médica e repasse', icon: 'M', cssClass: 'icon-medico', arquivo: 'dashboard-medico.html' },
         { id: 'farmacia', nome: 'Painel Farmácia', descricao: 'Materiais, medicamentos e consumo de insumos', icon: 'F', cssClass: 'icon-farmacia', arquivo: 'dashboard-farmacia.html' },

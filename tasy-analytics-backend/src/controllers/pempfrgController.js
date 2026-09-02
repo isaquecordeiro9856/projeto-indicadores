@@ -1,6 +1,8 @@
 const pool = require('../config/database');
-const { extrairPeriodo, obterLimite } = require('../utils/periodo');
+const { extrairPeriodo, obterLimite, intervaloAno } = require('../utils/periodo');
 const { aplicarEscopo } = require('../services/escopoAcesso');
+const { extrairMetadadosSql } = require('../utils/extrairFontes');
+const logger = require('../config/logger');
 
 const DIMENSOES_PEMPFRG = {
   convenio: {
@@ -21,28 +23,30 @@ const DIMENSOES_PEMPFRG = {
   setor: {
     query: `
       SELECT
-        COALESCE(CAST(pp.cd_setor_atendimento AS TEXT), 'Não Informado') as label,
+        COALESCE(se.ds_setor_atendimento, 'Não Informado') as label,
         COUNT(DISTINCT pp.nr_atendimento) as qtd_contas,
         COUNT(*) as qtd_procedimentos,
         COALESCE(SUM(pp.vl_procedimento), 0) as valor_produzido,
         COALESCE(SUM(pp.vl_medico), 0) as valor_medico
       FROM ods.procedimento_paciente pp
+      LEFT JOIN ods.setor_atendimento se ON pp.cd_setor_atendimento = se.cd_setor_atendimento
       WHERE pp.dt_procedimento >= $1 AND pp.dt_procedimento <= $2 /* ESCOPO */
-      GROUP BY pp.cd_setor_atendimento
+      GROUP BY se.ds_setor_atendimento
       HAVING COUNT(DISTINCT pp.nr_atendimento) > 0
     `
   },
   medico_executor: {
     query: `
       SELECT
-        COALESCE(CAST(pp.cd_medico AS TEXT), 'Não Informado') as label,
+        COALESCE(pf.nm_pessoa_fisica, 'Não Informado') as label,
         COUNT(DISTINCT pp.nr_atendimento) as qtd_contas,
         COUNT(*) as qtd_procedimentos,
         COALESCE(SUM(pp.vl_procedimento), 0) as valor_produzido,
         COALESCE(SUM(pp.vl_medico), 0) as valor_medico
       FROM ods.procedimento_paciente pp
+      LEFT JOIN ods.pessoa_fisica pf ON pp.cd_medico = pf.cd_pessoa_fisica
       WHERE pp.dt_procedimento >= $1 AND pp.dt_procedimento <= $2 /* ESCOPO */
-      GROUP BY pp.cd_medico
+      GROUP BY pf.nm_pessoa_fisica
       HAVING COUNT(DISTINCT pp.nr_atendimento) > 0
     `
   },
@@ -70,7 +74,7 @@ const DIMENSOES_PEMPFRG = {
         COALESCE(SUM(pp.vl_procedimento), 0) as valor_produzido,
         COALESCE(SUM(pp.vl_medico), 0) as valor_medico
       FROM ods.procedimento_paciente pp
-      WHERE EXTRACT(YEAR FROM pp.dt_procedimento) = $1 /* ESCOPO */
+      WHERE pp.dt_procedimento >= $1 AND pp.dt_procedimento < $2 /* ESCOPO */
       GROUP BY TO_CHAR(pp.dt_procedimento, 'YYYY-MM')
       ORDER BY label
     `
@@ -84,6 +88,36 @@ const NOMES_DIMENSAO = {
   procedimento: 'Procedimento',
   mes: 'Mês'
 };
+
+// Coluna (já com o mesmo COALESCE usado como "label" na dimensão de origem)
+// usada para filtrar a evolução mensal quando o drill-down parte de uma
+// linha específica da tabela (ex.: clicar num médico deve trazer só a
+// evolução mensal daquele médico, não do indicador inteiro).
+const COLUNA_FILTRO_MES = {
+  convenio: "COALESCE(c.ds_convenio, 'Não Informado')",
+  setor: "COALESCE(se.ds_setor_atendimento, 'Não Informado')",
+  medico_executor: "COALESCE(pf.nm_pessoa_fisica, 'Não Informado')",
+  procedimento: "COALESCE(p.ds_procedimento, 'Não Informado')"
+};
+
+function construirQueryMesFiltrada(colunaFiltro) {
+  return `
+    SELECT
+      TO_CHAR(pp.dt_procedimento, 'YYYY-MM') as label,
+      COUNT(DISTINCT pp.nr_atendimento) as qtd_contas,
+      COUNT(*) as qtd_procedimentos,
+      COALESCE(SUM(pp.vl_procedimento), 0) as valor_produzido,
+      COALESCE(SUM(pp.vl_medico), 0) as valor_medico
+    FROM ods.procedimento_paciente pp
+    LEFT JOIN ods.convenio c ON pp.cd_convenio = c.cd_convenio
+    LEFT JOIN ods.setor_atendimento se ON pp.cd_setor_atendimento = se.cd_setor_atendimento
+    LEFT JOIN ods.pessoa_fisica pf ON pp.cd_medico = pf.cd_pessoa_fisica
+    LEFT JOIN ods.procedimento p ON pp.cd_procedimento = p.cd_procedimento
+    WHERE pp.dt_procedimento >= $1 AND pp.dt_procedimento < $2 AND ${colunaFiltro} = $3 /* ESCOPO */
+    GROUP BY TO_CHAR(pp.dt_procedimento, 'YYYY-MM')
+    ORDER BY label
+  `;
+}
 
 const CONFIG_INDICADORES = {
   qtd_contas: { nome: 'Qtde Atendimentos', isMoeda: false, isPercentual: false, color: '#475569', badgeClass: 'badge-qtd-contas' },
@@ -105,7 +139,7 @@ function formatarItemMultivariado(item) {
 
 function buscarPempfrg(req, res) {
   try {
-    const { dimensao, indicador, ordem } = req.body;
+    const { dimensao, indicador, ordem, dimensaoOrigem, rotulo } = req.body;
     const periodo = extrairPeriodo(req.body);
     const limite = obterLimite(req.body);
 
@@ -113,10 +147,21 @@ function buscarPempfrg(req, res) {
       return res.status(400).json({ mensagem: 'Dimensão inválida: ' + dimensao });
     }
 
-    const config = DIMENSOES_PEMPFRG[dimensao];
-    const params = dimensao === 'mes' ? [periodo.anoRef] : [periodo.dataInicio, periodo.dataFim];
+    // Drill-down de uma linha específica: evolução mensal filtrada pelo
+    // item clicado (ex.: só aquele médico), não o indicador inteiro.
+    const colunaFiltro = dimensao === 'mes' ? COLUNA_FILTRO_MES[dimensaoOrigem] : null;
+    const filtrarPorItem = !!colunaFiltro && rotulo != null && rotulo !== '';
+
+    const config = filtrarPorItem
+      ? { query: construirQueryMesFiltrada(colunaFiltro) }
+      : DIMENSOES_PEMPFRG[dimensao];
+    const intervalo = dimensao === 'mes' ? intervaloAno(periodo.anoRef) : null;
+    const params = filtrarPorItem
+      ? [intervalo.inicio, intervalo.fimExclusivo, rotulo]
+      : (dimensao === 'mes' ? [intervalo.inicio, intervalo.fimExclusivo] : [periodo.dataInicio, periodo.dataFim]);
 
     const consulta = aplicarEscopo(config.query, req.usuario, 'pp', params);
+    const origemDados = extrairMetadadosSql(config.query);
     pool.query(consulta.query, consulta.parametros).then(function(result) {
       let dados = result.rows.map(function(row) {
         return {
@@ -155,7 +200,9 @@ function buscarPempfrg(req, res) {
           color: cfg.color,
           badgeClass: cfg.badgeClass,
           totalBase: totalBase,
-          dados: dados
+          dados: dados,
+          fontes: origemDados.tabelas,
+          origemDados: origemDados
         });
       }
 
@@ -168,14 +215,16 @@ function buscarPempfrg(req, res) {
         nomeDimensao: NOMES_DIMENSAO[dimensao] || dimensao,
         modoTodos: true,
         totalBase: totalBase,
-        dados: dados
+        dados: dados,
+        fontes: origemDados.tabelas,
+        origemDados: origemDados
       });
     }).catch(function(error) {
-      console.error('Erro na query de pempfrg:', error.message);
+      logger.error({ err: error }, 'Erro na query de pempfrg');
       res.status(500).json({ mensagem: 'Erro ao consultar dados de produção: ' + error.message });
     });
   } catch (error) {
-    console.error('Erro no controller de pempfrg:', error);
+    logger.error({ err: error }, 'Erro no controller de pempfrg');
     res.status(500).json({ mensagem: 'Erro interno do servidor' });
   }
 }

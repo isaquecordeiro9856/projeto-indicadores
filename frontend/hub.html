@@ -15,15 +15,26 @@
 <body ng-controller="HubController">
   <div class="hub-page">
     <div class="hub-header">
-      <h1>TASY Analytics</h1>
+      <div class="brand">
+        <div class="brand-mark">TA</div>
+        <div>
+          <h1>TASY Analytics</h1>
+          <p class="tagline">Indicadores hospitalares</p>
+        </div>
+      </div>
       <div class="user-info">
-        <span>{{usuario.ds_usuario}} ({{perfil.descricao}})</span>
+        <div class="avatar">{{(usuario.ds_usuario || '?').charAt(0)}}</div>
+        <div class="user-text">
+          <span class="nome">{{usuario.ds_usuario}}</span>
+          <span class="perfil">{{perfil.descricao}}</span>
+        </div>
         <button class="btn-logout" ng-click="logout()">Sair</button>
       </div>
     </div>
 
     <div class="hub-content">
       <h2>Selecione um painel</h2>
+      <p class="hub-subtitle">Escolha o dashboard que deseja acessar</p>
 
       <div class="no-data" ng-if="dashboards.length === 0">
         Nenhum painel disponível para o seu perfil. Contate o administrador.

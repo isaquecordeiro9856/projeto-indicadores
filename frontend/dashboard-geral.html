@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="pt-BR" ng-app="GeralApp">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Painel Geral da Direção · TASY Analytics</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/geral.css?v=4">
+  <script src="js/angular.min.js"></script>
+  <script src="js/chart.umd.min.js"></script>
+</head>
+<body class="geral" ng-class="{compacta: compacta}" ng-controller="GeralController" ng-click="fecharPaineis()">
+
+<a class="pular-para" href="#conteudoPrincipal">Ir para o conteúdo</a>
+
+<!-- ══════════════ TOPO ══════════════ -->
+<header class="topo">
+  <div class="marca">
+    <div class="selo" aria-hidden="true">TA</div>
+    <div>
+      <h1>Painel Geral da Direção</h1>
+      <p>{{catalogo.totalIndicadores}} indicadores · {{catalogo.totalDimensoes}} cortes · todas as áreas</p>
+    </div>
+  </div>
+
+  <button class="btn-topo icone" ng-click="alternarMenu(); $event.stopPropagation()"
+          aria-label="Mostrar ou ocultar o menu de cortes"
+          title="Mostrar/ocultar menu (B)"><span aria-hidden="true">☰</span></button>
+
+  <!-- Busca global: parece campo, é botão. Abre a paleta Ctrl+K, que é o
+       único caminho que acha pelo nome do NÚMERO e não do corte. -->
+  <button class="busca-global" ng-click="abrirPalheta(); $event.stopPropagation()"
+          ng-keydown="aoTeclarNaBuscaGlobal($event)"
+          aria-label="Buscar indicador ou corte. Atalho Control K">
+    <span class="lupa" aria-hidden="true">⌕</span>
+    <span class="ph">Buscar indicador ou corte…</span>
+    <span class="atalho" aria-hidden="true"><kbd>Ctrl</kbd><kbd>K</kbd></span>
+  </button>
+
+  <div class="grupo-ctrl">
+    <div class="periodo-trigger">
+      <button class="btn-topo" ng-class="{ativo: painel.periodo}"
+              ng-click="abrirPainelPeriodo($event)"
+              aria-haspopup="dialog" aria-expanded="{{!!painel.periodo}}" title="Escolher período">
+        <span aria-hidden="true">📅</span> {{rotuloPeriodoAtual()}}
+      </button>
+
+      <div class="pop pop-periodo" ng-if="painel.periodo" ng-click="$event.stopPropagation()"
+           role="dialog" aria-label="Escolher período">
+        <div class="segmentado periodo-abas" role="tablist" aria-label="Tipo de período">
+          <button role="tab" aria-selected="{{abaPeriodo === 'ano'}}" ng-class="{ativo: abaPeriodo === 'ano'}" ng-click="mudarAbaPeriodo('ano')">Ano</button>
+          <button role="tab" aria-selected="{{abaPeriodo === 'mes'}}" ng-class="{ativo: abaPeriodo === 'mes'}" ng-click="mudarAbaPeriodo('mes')">Mês</button>
+          <button role="tab" aria-selected="{{abaPeriodo === 'dia'}}" ng-class="{ativo: abaPeriodo === 'dia'}" ng-click="mudarAbaPeriodo('dia')">Dia</button>
+        </div>
+
+        <div class="periodo-corpo" ng-switch="abaPeriodo">
+          <div ng-switch-when="ano" class="periodo-campo">
+            <label for="perAno">Ano</label>
+            <select id="perAno" class="sel" ng-model="sel.ano" ng-change="mudarAnoMesValor()" ng-options="a as a for a in anos"></select>
+          </div>
+          <div ng-switch-when="mes" class="periodo-campo periodo-campo-dupla">
+            <div>
+              <label for="perMes">Mês</label>
+              <select id="perMes" class="sel" ng-model="sel.mes" ng-change="mudarAnoMesValor()" ng-options="m.valor as m.nome for m in mesesSemAnoInteiro"></select>
+            </div>
+            <div>
+              <label for="perMesAno">Ano</label>
+              <select id="perMesAno" class="sel" ng-model="sel.ano" ng-change="mudarAnoMesValor()" ng-options="a as a for a in anos"></select>
+            </div>
+          </div>
+          <div ng-switch-when="dia" class="periodo-campo">
+            <label for="perDia">Dia</label>
+            <input id="perDia" type="date" class="sel campo-dia" ng-model="sel.diaData" ng-change="mudarDiaValor()" max="{{hojeInput}}">
+          </div>
+        </div>
+
+        <div class="periodo-atalhos">
+          <button class="chip-periodo" ng-repeat="p in presets track by p.id"
+                  ng-class="{ativo: presetAtivo(p.id)}" ng-click="aplicarPreset(p.id)">{{p.nome}}</button>
+        </div>
+
+        <div class="acoes">
+          <button class="btn pequeno" ng-click="fecharPaineis()">Fechar</button>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn-topo" ng-class="{ativo: comparar}" aria-pressed="{{!!comparar}}"
+            ng-click="alternarComparar(); $event.stopPropagation()"
+            title="Comparar com o período anterior (C)"><span aria-hidden="true">⇄</span> Comparar</button>
+    <button class="btn-topo icone" ng-click="recarregar(); $event.stopPropagation()"
+            aria-label="Atualizar os dados" title="Atualizar (R)"><span aria-hidden="true">⟳</span></button>
+    <button class="btn-topo icone" ng-click="alternarTema(); $event.stopPropagation()"
+            aria-label="Tema: {{tema}}" title="Tema: {{tema}} (T)">
+      <span aria-hidden="true">{{tema === 'escuro' ? '☾' : tema === 'claro' ? '☀' : '◐'}}</span>
+    </button>
+    <button class="btn-topo icone" ng-click="abrirPainel('atalhos', $event)"
+            aria-label="Ver atalhos de teclado" title="Atalhos (?)">?</button>
+    <a class="btn-topo" href="hub.html">Painéis</a>
+  </div>
+
+  <div class="usuario-topo">
+    <div class="av" aria-hidden="true">{{(usuario.ds_usuario || usuario.nm_usuario || '?').charAt(0)}}</div>
+    <div class="txt">
+      <b>{{usuario.ds_usuario || usuario.nm_usuario}}</b>
+      <span>{{perfil.descricao}} · Direção</span>
+    </div>
+    <button class="btn-topo" ng-click="sair()">Sair</button>
+  </div>
+</header>
+
+<!-- ══════════════ ABAS DE ÁREA ══════════════ -->
+<nav class="abas-area" ng-if="catalogo.areas" role="tablist" aria-label="Áreas do painel">
+  <button class="aba" ng-repeat="a in catalogo.areas track by a.id"
+          role="tab" id="aba-{{a.id}}" aria-controls="conteudoPrincipal"
+          aria-selected="{{area === a.id}}" tabindex="{{area === a.id ? 0 : -1}}"
+          ng-keydown="aoTeclarAbas($event, $index)"
+          ng-class="{ativa: area === a.id}" var-css="{'--area-cor': a.cor}"
+          ng-click="selecionarArea(a.id); $event.stopPropagation()"
+          title="{{a.descricao}}">
+    <span class="ic" aria-hidden="true">{{a.icone}}</span>
+    <span>{{a.nome}}</span>
+    <span class="qtd" ng-if="indiceAreas[a.id].qtd">{{indiceAreas[a.id].qtd}}</span>
+  </button>
+  <span class="espaco-abas"></span>
+  <button class="btn-palheta" ng-click="abrirPalheta(); $event.stopPropagation()"
+          aria-label="Buscar indicador ou corte (Control K)"
+          title="Buscar qualquer indicador ou corte (Ctrl+K)"><span aria-hidden="true">⌕</span></button>
+</nav>
+
+<!-- Cache: a revalidação leva 30-40s, tempo demais para um toast. -->
+<div class="faixa-cache" ng-if="doCache" role="status">
+  <span class="pulso" aria-hidden="true"></span>
+  Mostrando a última consulta salva ({{doCache.quando}}) · buscando os números atuais…
+</div>
+
+<div class="corpo" ng-class="{'sem-menu': !menuAberto}">
+
+  <!-- ══════════════ MENU ══════════════ -->
+  <nav class="menu" aria-label="Cortes disponíveis">
+    <div class="menu-ctx">
+      <span class="pt" aria-hidden="true" var-css="{'--area-cor': areaAtual.cor}"></span>
+      <span class="nome">{{areaAtual.nome}}</span>
+      <span class="acoes">
+        <button ng-click="recolherTudo(); $event.stopPropagation()" aria-label="Recolher tudo" title="Recolher tudo">⊟</button>
+        <button ng-click="expandirTudo(); $event.stopPropagation()" aria-label="Expandir tudo" title="Expandir tudo">⊞</button>
+      </span>
+    </div>
+
+    <div class="menu-busca">
+      <label class="sr-only" for="buscaMenu">Buscar corte</label>
+      <input id="buscaMenu" type="text" ng-model="buscaMenu"
+             placeholder="Buscar corte…"
+             ng-keydown="aoTeclarNoMenu($event)"
+             ng-click="$event.stopPropagation()">
+      <!-- Escondido na Visão Geral: ela não tem cortes próprios, então
+           "nesta área" não teria o que mostrar. -->
+      <div class="segmentado menu-escopo" role="group" aria-label="Escopo da busca" ng-if="area !== 'geral'">
+        <button ng-class="{ativo: escopoMenu === 'area'}"
+                ng-click="alternarEscopoMenu('area'); $event.stopPropagation()">Nesta área</button>
+        <button ng-class="{ativo: escopoMenu === 'todas'}"
+                ng-click="alternarEscopoMenu('todas'); $event.stopPropagation()">Todas as áreas</button>
+      </div>
+    </div>
+
+    <div class="menu-lista">
+      <!-- Três formatos de seção. Na Visão Geral (e na busca global) entra o
+           nível de ÁREA: sem ele, a aba mais simples do painel despejava os
+           157 cortes das 7 áreas numa lista só. -->
+      <div ng-repeat="s in menuSecoes track by s.chave" ng-switch="s.tipo">
+
+        <!-- Favoritos / Recentes -->
+        <div ng-switch-when="fixa" class="g-grupo" ng-class="{fechado: grupoFechado(s)}">
+          <button class="cab" ng-click="alternarGrupo(s); $event.stopPropagation()"
+                  aria-expanded="{{!grupoFechado(s)}}">
+            <span class="ic" aria-hidden="true" ng-style="{background: s.cor}">{{s.icone}}</span>
+            <span class="nome">{{s.nome}}</span>
+            <span class="qtd">{{s.dimensoes.length}}</span>
+            <span class="seta" aria-hidden="true">▼</span>
+          </button>
+          <div class="g-itens">
+            <button class="g-item" ng-repeat="d in s.dimensoes track by d.id"
+                    ng-class="{ativo: dimensao.id === d.id}"
+                    ng-click="selecionarDimensao(d); $event.stopPropagation()">
+              <span class="nome">{{d.grupo}} · {{d.nome}}</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Área (2º nível) -->
+        <div ng-switch-when="area" class="m-area" ng-class="{fechada: areaFechada(s.id)}"
+             var-css="{'--area-cor': s.cor}">
+          <button class="cab" ng-click="alternarAreaMenu(s.id); $event.stopPropagation()"
+                  aria-expanded="{{!areaFechada(s.id)}}">
+            <span class="ic" aria-hidden="true">{{s.icone}}</span>
+            <span class="nome">{{s.nome}}</span>
+            <span class="qtd">{{s.qtd}}</span>
+            <span class="seta" aria-hidden="true">▼</span>
+          </button>
+          <div class="m-area-corpo">
+            <div class="g-grupo" ng-repeat="g in s.grupos track by g.nome" ng-class="{fechado: grupoFechado(g)}">
+              <button class="cab" ng-click="alternarGrupo(g); $event.stopPropagation()"
+                      aria-expanded="{{!grupoFechado(g)}}" title="{{g.descricao}}">
+                <span class="ic" aria-hidden="true" ng-style="{background: g.cor}">{{g.icone}}</span>
+                <span class="nome">{{g.nome}}</span>
+                <span class="marcas">
+                  <span class="tag lenta" ng-if="g._qtdPesados" title="{{g._qtdPesados}} consulta(s) pesada(s)">⏱{{g._qtdPesados}}</span>
+                  <span class="tag" ng-if="g._qtdCompostas" title="{{g._qtdCompostas}} corte(s) que cruzam duas fontes">×2</span>
+                </span>
+                <span class="qtd">{{g.dimensoes.length}}</span>
+                <span class="seta" aria-hidden="true">▼</span>
+              </button>
+              <div class="g-itens">
+                <button class="g-item" ng-repeat="d in g.dimensoes track by d.id"
+                        ng-class="{ativo: dimensao.id === d.id}"
+                        ng-click="selecionarDimensao(d); $event.stopPropagation()">
+                  <span class="nome">{{d.nome}}</span>
+                  <span class="tag lenta" ng-if="d.pesado" title="Consulta pesada: varre a tabela inteira">
+                    lenta<span class="sr-only"> — consulta pesada</span>
+                  </span>
+                  <span class="tag" ng-if="d.composta" title="Cruza duas fontes de dados">
+                    ×2<span class="sr-only"> — cruza duas fontes</span>
+                  </span>
+                  <span class="fav" ng-class="{on: favoritos[d.id]}" ng-click="alternarFavorito(d, $event)"
+                        role="button" tabindex="0" ng-keydown="aoTeclarFavorito($event, d)"
+                        aria-label="{{favoritos[d.id] ? 'Remover dos favoritos' : 'Fixar nos favoritos'}}">★</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Grupo solto (área específica, sem busca global) -->
+        <div ng-switch-when="grupo" class="g-grupo" ng-class="{fechado: grupoFechado(s)}">
+          <button class="cab" ng-click="alternarGrupo(s); $event.stopPropagation()"
+                  aria-expanded="{{!grupoFechado(s)}}" title="{{s.descricao}}">
+            <span class="ic" aria-hidden="true" ng-style="{background: s.cor}">{{s.icone}}</span>
+            <span class="nome">{{s.nome}}</span>
+            <span class="marcas">
+              <span class="tag lenta" ng-if="s._qtdPesados" title="{{s._qtdPesados}} consulta(s) pesada(s)">⏱{{s._qtdPesados}}</span>
+              <span class="tag" ng-if="s._qtdCompostas" title="{{s._qtdCompostas}} corte(s) que cruzam duas fontes">×2</span>
+            </span>
+            <span class="qtd">{{s.dimensoes.length}}</span>
+            <span class="seta" aria-hidden="true">▼</span>
+          </button>
+          <div class="g-itens">
+            <button class="g-item" ng-repeat="d in s.dimensoes track by d.id"
+                    ng-class="{ativo: dimensao.id === d.id}"
+                    ng-click="selecionarDimensao(d); $event.stopPropagation()">
+              <span class="nome">{{d.nome}}</span>
+              <span class="tag lenta" ng-if="d.pesado" title="Consulta pesada: varre a tabela inteira">
+                lenta<span class="sr-only"> — consulta pesada</span>
+              </span>
+              <span class="tag" ng-if="d.composta" title="Cruza duas fontes de dados">
+                ×2<span class="sr-only"> — cruza duas fontes</span>
+              </span>
+              <span class="fav" ng-class="{on: favoritos[d.id]}" ng-click="alternarFavorito(d, $event)"
+                    role="button" tabindex="0" ng-keydown="aoTeclarFavorito($event, d)"
+                    aria-label="{{favoritos[d.id] ? 'Remover dos favoritos' : 'Fixar nos favoritos'}}">★</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="estado" ng-if="!grupos.length && !erros.catalogo">Carregando dimensões…</div>
+      <div class="estado erro" ng-if="erros.catalogo">
+        <span class="titulo">Não foi possível carregar o catálogo</span>
+        {{erros.catalogo}}
+        <div class="acoes"><button class="btn" ng-click="carregarCatalogo(); $event.stopPropagation()">Tentar novamente</button></div>
+      </div>
+      <div class="estado" ng-if="grupos.length && !menuSecoes.length">
+        Nada encontrado para “{{buscaMenu}}”.
+        <div class="acoes">
+          <button class="btn pequeno" ng-if="escopoMenu === 'area'"
+                  ng-click="alternarEscopoMenu('todas'); $event.stopPropagation()">Buscar em todas as áreas</button>
+          <button class="btn pequeno" ng-click="limparBuscaMenu(); $event.stopPropagation()">Limpar busca</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="menu-rodape">
+      <span>{{cortesNoMenu}} de {{catalogo.totalDimensoes}} cortes</span>
+      <span>{{escopoMenu === 'todas' ? 'todas as áreas' : areaAtual.nome}}</span>
+    </div>
+  </nav>
+
+  <!-- ══════════════ CONTEÚDO ══════════════ -->
+  <main class="conteudo" id="conteudoPrincipal" role="tabpanel" aria-labelledby="aba-{{area}}" tabindex="-1">
+
+    <!-- ── Cabeçalho da área ── -->
+    <div class="area-cab" ng-if="areaAtual">
+      <h2>{{areaAtual.nome}}</h2>
+      <p>{{areaAtual.descricao}}</p>
+    </div>
+
+    <!-- ── O que mudou: as 4 maiores variações de TODOS os blocos ──
+         Numa tela de 41 números iguais, é o que diz por onde começar. -->
+    <section class="secao" ng-if="area === 'geral' && !carregando.blocos">
+      <div class="secao-cab">
+        <h2>O que mudou</h2>
+        <p ng-if="comparar">Maiores variações do resumo em relação ao período anterior</p>
+      </div>
+      <div class="destaques" ng-if="comparar && topVariacoes.length">
+        <div class="cartao destaque" ng-repeat="d in topVariacoes track by d.chave"
+             ng-class="classeDelta(d.variacao, d.melhor)">
+          <span class="seta" aria-hidden="true">{{setaDelta(d.variacao)}}</span>
+          <div class="txt">
+            <b title="{{d.nome}}">{{d.nome}}</b>
+            <span class="valor-linha">
+              <span class="valor-atual">{{d.valorFormatado}}</span>
+              <span class="valor-delta">{{fmtDelta(d.variacao)}}</span>
+            </span>
+            <span class="valor-base" ng-if="d.valorAnteriorFormatado">vs. {{d.valorAnteriorFormatado}}</span>
+            <span class="onde">{{d.bloco}}</span>
+          </div>
+        </div>
+      </div>
+      <div class="cartao convite" ng-if="!comparar">
+        <span aria-hidden="true">⇄</span>
+        Ligue <b>Comparar</b> no topo (ou tecle <kbd>C</kbd>) para ver o que subiu e o que caiu em relação ao período anterior.
+      </div>
+    </section>
+
+    <!-- ── Resumo executivo (blocos da área) ── -->
+    <section class="secao">
+      <div class="secao-cab">
+        <h2>{{area === 'geral' ? 'Resumo executivo' : 'Números de ' + areaAtual.nome}}</h2>
+        <p>{{mes ? meses[+mes].nome + '/' + ano : 'Ano de ' + ano}}<span ng-if="comparar"> · variação vs. período anterior</span></p>
+        <div class="acoes">
+          <span class="tag" ng-if="carregando.blocos">{{totalBlocos - carregando.blocos}} de {{totalBlocos}} carregados</span>
+          <button class="btn" ng-if="temPesadosAdiados()" ng-click="carregarPesados(); $event.stopPropagation()">
+            Carregar blocos pesados
+          </button>
+        </div>
+      </div>
+
+      <div class="blocos">
+        <div class="cartao bloco" ng-repeat="b in blocos track by b.chave" var-css="{'--bloco-cor': b.cor || '#0d9488'}">
+          <div class="b-cab">
+            <span class="ic" aria-hidden="true">{{b.icone}}</span>
+            <h3>{{b.titulo}}</h3>
+            <span class="tag lenta" ng-if="b.pesado" title="Consulta pesada: varre a tabela inteira">⏱</span>
+            <button type="button" class="ic-info" ng-if="b.origemDados"
+                    ng-click="abrirOrigem($event, b.origemDados, null)" aria-label="Ver origem dos dados de {{b.titulo}}">ⓘ</button>
+            <button class="btn pequeno" ng-if="b.adiado || b.erro"
+                    ng-click="carregarBloco(b); $event.stopPropagation()">
+              {{b.erro ? 'Tentar de novo' : 'Carregar'}}
+            </button>
+          </div>
+
+          <div class="progresso" ng-if="b.carregando"><i></i></div>
+
+          <div class="kpis" ng-if="b.carregando" aria-hidden="true">
+            <div class="kpi" ng-repeat="n in [1,2,3,4]">
+              <div class="k-nome-row"><span class="k-nome esqueleto">carregando o indicador</span></div>
+              <span class="k-valor esqueleto">000.000</span>
+            </div>
+          </div>
+
+          <div class="estado compacto" ng-if="b.adiado">
+            Consulta pesada — carregada só quando você pedir.
+          </div>
+          <div class="estado erro compacto" ng-if="b.erro">{{b.erro}}</div>
+
+          <div class="kpis" ng-if="b.kpis">
+            <!-- ng-class no card, não no delta: é a borda esquerda que
+                 destaca o KPI ruim numa parede de números iguais. -->
+            <div class="kpi" ng-repeat="k in b.kpis track by k.chave"
+                 ng-class="[classeDelta(k.variacao, k.melhor), classeMetaKpi(k)]">
+              <div class="k-nome-row">
+                <span class="k-nome" title="{{k.nome}}">{{k.nome}}</span>
+                <button type="button" class="ic-info" ng-if="b.origemDados"
+                        ng-click="abrirOrigem($event, b.origemDados, k.chave)" aria-label="O que é {{k.nome}}">ⓘ</button>
+              </div>
+              <span class="k-valor">{{k.valorFormatado}}</span>
+              <span class="k-delta" ng-if="k.variacao !== undefined" ng-class="classeDelta(k.variacao, k.melhor)">
+                <span><span aria-hidden="true">{{setaDelta(k.variacao)}}</span> {{fmtDelta(k.variacao)}}</span>
+                <span class="anterior" ng-if="k.valorAnteriorFormatado">· {{k.valorAnteriorFormatado}}</span>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Continuar de onde parou (favoritos + recentes) ── -->
+    <section class="secao ver-por" ng-if="area === 'geral' && (favoritosDim.length || recentesDim.length)">
+      <div class="secao-cab">
+        <h2>Continuar de onde parou</h2>
+        <p>Cortes que você fixou com a estrela e os últimos que abriu</p>
+      </div>
+      <div class="vp-grupo" ng-if="favoritosDim.length">
+        <div class="vp-cab"><span class="ic" aria-hidden="true" style="background:#b7791f">★</span> Favoritos
+          <span class="qtd">{{favoritosDim.length}}</span></div>
+        <div class="vp-itens">
+          <button class="vp-item" ng-repeat="d in favoritosDim track by d.id"
+                  ng-class="{ativo: dimensao.id === d.id}" var-css="{'--vp-cor': d.corGrupo}"
+                  ng-click="selecionarDimensao(d); $event.stopPropagation()">
+            <span class="fav" aria-hidden="true">★</span>
+            <span>{{d.grupo}} · {{d.nome}}</span>
+          </button>
+        </div>
+      </div>
+      <div class="vp-grupo" ng-if="recentesDim.length">
+        <div class="vp-cab"><span class="ic" aria-hidden="true">↻</span> Recentes</div>
+        <div class="vp-itens">
+          <button class="vp-item" ng-repeat="d in recentesDim track by d.id"
+                  ng-class="{ativo: dimensao.id === d.id}" var-css="{'--vp-cor': d.corGrupo}"
+                  ng-click="selecionarDimensao(d); $event.stopPropagation()">
+            <span>{{d.grupo}} · {{d.nome}}</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Por onde começar ──
+         Sem isto, quem abre o painel pela primeira vez não tem nenhum
+         ponto de entrada visual para os 157 cortes — só o menu. -->
+    <section class="secao ver-por" ng-if="area === 'geral' && areasNavegacao.length">
+      <div class="secao-cab">
+        <h2>Por onde começar</h2>
+        <p>{{catalogo.totalDimensoes}} cortes em {{areasNavegacao.length}} áreas · ou tecle <kbd>Ctrl</kbd><kbd>K</kbd> e busque pelo nome do número</p>
+      </div>
+      <div class="vp-grade">
+        <div class="vp-grupo" ng-repeat="a in areasNavegacao track by a.id" var-css="{'--vp-cor': a.cor}">
+          <div class="vp-cab">
+            <span class="ic" aria-hidden="true">{{a.icone}}</span>
+            <span>{{a.nome}}</span>
+            <span class="qtd">{{a.qtd}} cortes</span>
+          </div>
+          <p class="vp-desc">{{a.descricao}}</p>
+          <div class="vp-itens">
+            <button class="vp-item" ng-repeat="d in a.sugeridas track by d.id"
+                    ng-class="{ativo: dimensao.id === d.id}"
+                    ng-click="selecionarDimensao(d); $event.stopPropagation()">
+              {{d.nome}}
+            </button>
+          </div>
+          <button class="vp-mais" ng-click="selecionarArea(a.id); $event.stopPropagation()">
+            ver os {{a.qtd}} cortes de {{a.nome}} →
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Ver por… (dentro de uma área específica) ── -->
+    <section class="secao ver-por" ng-if="area !== 'geral' && cortesDaArea.length">
+      <div class="secao-cab">
+        <h2>Ver por…</h2>
+        <p>Todos os cortes de {{areaAtual.nome}}, agrupados</p>
+      </div>
+      <div class="vp-grupo" ng-repeat="g in cortesDaArea track by g.nome" var-css="{'--vp-cor': g.cor}">
+        <div class="vp-cab">
+          <span class="ic" aria-hidden="true">{{g.icone}}</span>
+          <span>{{g.nome}}</span>
+          <span class="qtd">{{g.dimensoes.length}}</span>
+        </div>
+        <div class="vp-itens">
+          <button class="vp-item" ng-repeat="d in g.dimensoes track by d.id"
+                  ng-class="{ativo: dimensao.id === d.id}"
+                  ng-click="selecionarDimensao(d); $event.stopPropagation()">
+            <span class="fav" ng-if="favoritos[d.id]" aria-hidden="true">★</span>
+            <span>{{d.nome}}</span>
+            <span class="tag lenta" ng-if="d.pesado">⏱</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Evolução consolidada (só na Visão Geral) ── -->
+    <section class="secao" ng-if="area === 'geral'">
+      <div class="secao-cab">
+        <h2>Evolução mensal consolidada — {{ano}}</h2>
+        <p>Séries de fontes diferentes no mesmo eixo. Valores em R$ à esquerda, quantidades à direita.</p>
+      </div>
+
+      <div class="cartao grafico-cartao">
+        <div class="progresso" ng-if="carregando.evolucao"><i></i></div>
+        <div class="estado erro compacto" ng-if="erros.evolucao">
+          {{erros.evolucao}}
+          <div class="acoes"><button class="btn pequeno" ng-click="carregarEvolucao(); $event.stopPropagation()">Tentar novamente</button></div>
+        </div>
+
+        <div class="legenda" ng-if="evolucao">
+          <button ng-repeat="s in evolucao.series track by s.chave" ng-class="{off: seriesOcultas[s.chave]}"
+                  var-css="{'--serie-cor': s.cor}" aria-pressed="{{!seriesOcultas[s.chave]}}"
+                  ng-click="alternarSerie(s.chave); $event.stopPropagation()">
+            <span class="pt" aria-hidden="true"></span>{{s.nome}}
+          </button>
+        </div>
+
+        <div class="grafico-caixa" ng-show="evolucao && evolucao.meses.length">
+          <canvas id="graficoEvolucao"></canvas>
+        </div>
+
+        <div class="estado" ng-if="evolucao && !evolucao.meses.length">
+          Sem dados de evolução para {{ano}}.
+          <div class="acoes"><button class="btn pequeno" ng-click="abrirPainelPeriodo($event)">Trocar de período</button></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Explorador ── -->
+    <section class="secao" ng-if="dimensao">
+      <div class="cartao barra-dim">
+        <div class="dim-titulo" var-css="{'--dim-cor': dimensao.corGrupo}">
+          <span class="ic" aria-hidden="true">{{dimensao.iconeGrupo}}</span>
+          <div>
+            <h2>{{dimensao.grupo}} · {{dimensao.nome}}
+              <button type="button" class="ic-info" ng-if="resultado.origemDados"
+                      ng-click="abrirOrigem($event, resultado.origemDados, resultado.indicador)" aria-label="Ver origem dos dados">ⓘ</button>
+            </h2>
+            <span class="meta" ng-if="resultado">
+              {{resultado.totalBase}} linhas<span ng-if="resultado.truncado"> (top {{resultado.limiteFonte}})</span>
+              · exibindo {{linhasVisiveis().length}}
+              · {{resultado.periodo.rotulo}}
+              <span ng-if="resultado.comparado">vs. {{resultado.periodo.rotuloAnterior}}</span>
+            </span>
+          </div>
+          <div class="avisos">
+            <span class="aviso" ng-if="resultado.pesado" title="Fonte grande, sem índice de data no ODS">
+              <span aria-hidden="true">⏱</span> consulta pesada
+            </span>
+            <span class="aviso" ng-if="resultado.truncado"
+                  title="A dimensão tem cardinalidade alta: o banco devolve as maiores linhas, mas o TOTAL é calculado sobre a base inteira">
+              top {{resultado.limiteFonte}}
+            </span>
+            <span class="aviso info" ng-if="resultado.composta"
+                  title="Duas fontes consultadas separadamente e casadas pelo rótulo. Um rótulo que só existe num dos lados entra com zero do outro, e os períodos das duas tabelas não são o mesmo evento — por isso percentuais podem passar de 100%.">
+              ×2 cruza duas fontes
+            </span>
+            <span class="aviso info" ng-if="mostrarAnomalias">filtrando anomalias</span>
+          </div>
+          <!-- Antes o servidor trocava o indicador em silêncio quando o
+               corte novo não tinha o pedido, e parecia bug. -->
+          <span class="aviso-troca" ng-if="avisoIndicadorTrocado" role="status">{{avisoIndicadorTrocado}}</span>
+        </div>
+
+        <div class="linha-indicadores" ng-if="resultado">
+          <span class="rot" id="rotIndicador">Indicador em foco</span>
+          <div class="chips" role="radiogroup" aria-labelledby="rotIndicador">
+            <button class="chip" ng-repeat="i in resultado.indicadores track by i.chave"
+                    role="radio" aria-checked="{{indicador === i.chave}}"
+                    ng-class="{ativo: indicador === i.chave}" var-css="{'--chip-cor': i.cor}"
+                    ng-click="selecionarIndicador(i.chave); $event.stopPropagation()"
+                    title="{{i.melhor === 'maior' ? 'Crescer é bom' : i.melhor === 'menor' ? 'Crescer é ruim' : ''}}">
+              <span class="pt" aria-hidden="true"></span>{{i.nome}}
+              <span class="dir" ng-if="i.melhor && i.melhor !== 'neutro'" aria-hidden="true">{{i.melhor === 'maior' ? '↑' : '↓'}}</span>
+            </button>
+          </div>
+          <p class="chips-dica">
+            Define a série do gráfico, a coluna destacada e a ordenação da tabela ·
+            {{resultado.indicadores.length}} indicadores desta fonte
+          </p>
+        </div>
+
+        <!-- 3 zonas: visualização · dados · saída. Antes eram 13 controles
+             do mesmo peso enfileirados numa faixa de 26px. -->
+        <div class="ferramentas">
+          <div class="fer-grupo">
+            <div class="segmentado tipo-grafico" role="group" aria-label="Tipo de gráfico">
+              <button ng-class="{ativo: tipoGrafico === 'barra'}" ng-disabled="resultado.evolucao"
+                      aria-label="Barras horizontais" title="Barras"
+                      ng-click="alterarTipoGrafico('barra'); $event.stopPropagation()">▤</button>
+              <button ng-class="{ativo: tipoGrafico === 'coluna'}" ng-disabled="resultado.evolucao"
+                      aria-label="Colunas" title="Colunas"
+                      ng-click="alterarTipoGrafico('coluna'); $event.stopPropagation()">▥</button>
+              <button ng-class="{ativo: tipoGrafico === 'linha' || resultado.evolucao}"
+                      aria-label="Linha" title="Linha"
+                      ng-click="alterarTipoGrafico('linha'); $event.stopPropagation()">∿</button>
+              <button ng-class="{ativo: tipoGrafico === 'rosca'}" ng-disabled="resultado.evolucao"
+                      aria-label="Rosca" title="Rosca"
+                      ng-click="alterarTipoGrafico('rosca'); $event.stopPropagation()">◔</button>
+            </div>
+          </div>
+
+          <div class="fer-grupo dados">
+            <div class="busca-tabela">
+              <label class="sr-only" for="filtroLinhas">Filtrar linhas da tabela</label>
+              <input id="filtroLinhas" type="text" ng-model="buscaTabela" placeholder="Filtrar linhas…" ng-click="$event.stopPropagation()">
+              <button class="limpar" ng-if="buscaTabela" ng-click="limparBusca(); $event.stopPropagation()" aria-label="Limpar filtro">×</button>
+            </div>
+            <label class="sr-only" for="selLimite">Número de linhas</label>
+            <select id="selLimite" class="sel" ng-model="limite" ng-change="aplicarLimite()" ng-click="$event.stopPropagation()">
+              <option ng-value="10">10 linhas</option>
+              <option ng-value="25">25 linhas</option>
+              <option ng-value="50">50 linhas</option>
+              <option ng-value="100">100 linhas</option>
+              <option ng-value="999">Todas</option>
+            </select>
+            <button class="btn pequeno" ng-click="inverterOrdem(); $event.stopPropagation()"
+                    ng-disabled="resultado.evolucao || dimensao.ordemFixa">
+              {{ordem === 'desc' ? '↓ maior → menor' : '↑ menor → maior'}}
+            </button>
+            <button class="btn pequeno icone-so" ng-class="{ativo: mostrarAnomalias}"
+                    aria-pressed="{{!!mostrarAnomalias}}" aria-label="Mostrar só anomalias"
+                    ng-click="alternarAnomalias(); $event.stopPropagation()"
+                    title="Mostrar só valores a mais de 2 desvios-padrão da média (A)">⚠</button>
+            <button class="btn pequeno icone-so" ng-class="{ativo: compacta}"
+                    aria-pressed="{{!!compacta}}" aria-label="Densidade compacta"
+                    ng-click="alternarCompacta(); $event.stopPropagation()"
+                    title="Densidade (D)">≡</button>
+          </div>
+
+          <div class="fer-grupo saida">
+            <button class="btn pequeno" ng-click="abrirPainel('exportar', $event)"
+                    aria-haspopup="dialog"><span aria-hidden="true">↧</span> Exportar</button>
+            <button class="btn pequeno" ng-click="abrirPainel('mais', $event)"
+                    aria-haspopup="menu" aria-label="Mais ferramentas">⋯</button>
+
+            <div class="pop direita" ng-if="painel.mais" ng-click="$event.stopPropagation()"
+                 style="top:34px" role="menu">
+              <h4>Mais ferramentas</h4>
+              <div class="acoes" style="flex-direction:column;align-items:stretch">
+                <button class="btn pequeno" role="menuitem" ng-click="abrirPainel('dicionario', $event)">📖 Dicionário de indicadores</button>
+                <button class="btn pequeno" role="menuitem" ng-click="abrirPainel('colunas', $event)">▤ Colunas visíveis</button>
+                <button class="btn pequeno" role="menuitem" ng-click="abrirPainel('metas', $event)">◎ Metas</button>
+                <button class="btn pequeno" role="menuitem" ng-click="abrirPainel('views', $event)">★ Visões salvas</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- painéis flutuantes -->
+        <div class="pop dicionario" ng-if="painel.dicionario" ng-click="$event.stopPropagation()"
+             style="margin-top:8px;position:relative" role="dialog" aria-label="Dicionário de indicadores">
+          <h4>O que cada número significa</h4>
+          <div class="verbete" ng-repeat="i in resultado.indicadores track by i.chave" var-css="{'--chip-cor': i.cor}">
+            <span class="nome"><span class="pt" aria-hidden="true"></span>{{i.nome}}</span>
+            <p ng-if="dicionario[i.chave].desc">{{dicionario[i.chave].desc}}</p>
+            <p ng-if="!dicionario[i.chave].desc">
+              Sem descrição cadastrada. {{i.melhor === 'maior' ? 'Crescer é bom.' : i.melhor === 'menor' ? 'Crescer é ruim.' : ''}}
+            </p>
+            <code class="formula" ng-if="dicionario[i.chave].formula">{{dicionario[i.chave].formula}}</code>
+            <code class="formula" ng-if="resultado.origemDados.campos[i.chave]">{{resultado.origemDados.campos[i.chave]}}</code>
+          </div>
+          <div class="acoes"><button class="btn pequeno" ng-click="fecharPaineis()">Fechar</button></div>
+        </div>
+
+        <div class="pop" ng-if="painel.colunas" ng-click="$event.stopPropagation()"
+             style="margin-top:8px;position:relative" role="dialog" aria-label="Colunas visíveis">
+          <h4>Colunas visíveis</h4>
+          <div class="linha" ng-repeat="i in resultado.indicadores track by i.chave">
+            <input type="checkbox" id="col-{{i.chave}}" ng-checked="!colunasOcultas[i.chave]"
+                   ng-click="alternarColuna(i.chave)">
+            <label for="col-{{i.chave}}">{{i.nome}}</label>
+          </div>
+          <div class="acoes"><button class="btn pequeno" ng-click="mostrarTodasColunas()">Mostrar todas</button></div>
+        </div>
+
+        <div class="pop" ng-if="painel.metas" ng-click="$event.stopPropagation()"
+             style="margin-top:8px;position:relative" role="dialog" aria-label="Metas por indicador">
+          <h4>Metas por indicador</h4>
+          <p class="chips-dica" style="margin:0 0 8px">
+            Valor de referência por linha. Indicador de “menor é melhor” atinge a meta ficando abaixo dela.
+            A meta vale para todos os cortes deste indicador.
+          </p>
+          <div class="linha" ng-repeat="i in resultado.indicadores track by i.chave">
+            <label for="meta-{{i.chave}}">{{i.nome}}</label>
+            <input id="meta-{{i.chave}}" type="number" step="any" ng-model="metas[i.chave]" placeholder="—">
+          </div>
+          <div class="acoes">
+            <button class="btn pequeno ativo" ng-click="salvarMetas()">Salvar</button>
+            <button class="btn pequeno" ng-click="limparMetas()">Limpar todas</button>
+          </div>
+        </div>
+
+        <div class="pop" ng-if="painel.views" ng-click="$event.stopPropagation()"
+             style="margin-top:8px;position:relative" role="dialog" aria-label="Visões salvas">
+          <h4>Visões salvas</h4>
+          <div class="lista-views">
+            <div class="view-item" ng-repeat="v in views track by v.nome">
+              <button class="abrir" ng-click="aplicarView(v)">{{v.nome}}</button>
+              <span class="tag">{{v.ano}}{{v.mes ? '/' + v.mes : ''}}</span>
+              <button class="apagar" ng-click="excluirView(v, $event)" aria-label="Excluir a visão {{v.nome}}" title="Excluir">×</button>
+            </div>
+            <div class="estado compacto" ng-if="!views.length">
+              Nenhuma visão salva ainda. Uma visão guarda área, corte, indicador, período e ordenação.
+            </div>
+          </div>
+          <div class="linha" style="margin-top:8px">
+            <label class="sr-only" for="nomeView">Nome da visão</label>
+            <input id="nomeView" type="text" ng-model="novaView" placeholder="Nome da visão" style="width:100%;text-align:left">
+          </div>
+          <div class="acoes">
+            <button class="btn pequeno ativo" ng-click="salvarView()">Salvar visão atual</button>
+            <button class="btn pequeno" ng-click="copiarLink()">Copiar link</button>
+          </div>
+        </div>
+
+        <div class="pop" ng-if="painel.exportar" ng-click="$event.stopPropagation()"
+             style="margin-top:8px;position:relative" role="dialog" aria-label="Exportar">
+          <h4>Exportar</h4>
+          <div class="acoes" style="flex-wrap:wrap">
+            <button class="btn pequeno" ng-click="exportarCSV()">CSV</button>
+            <button class="btn pequeno" ng-click="exportarExcel()">Excel</button>
+            <button class="btn pequeno" ng-click="exportarPNG()">Gráfico PNG</button>
+            <button class="btn pequeno" ng-click="copiarTabela()">Copiar tabela</button>
+            <button class="btn pequeno" ng-click="imprimir()">Imprimir</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- maiores variações do corte -->
+      <div class="destaques" ng-if="destaques().length" style="margin-bottom:12px">
+        <div class="cartao destaque" ng-repeat="d in destaques() track by d.label" ng-class="classeDelta(d.variacao, resultado.melhor)">
+          <span class="seta" aria-hidden="true">{{setaDelta(d.variacao)}}</span>
+          <div class="txt">
+            <b title="{{d.label}}">{{d.label}}</b>
+            <span class="valor-linha">
+              <span class="valor-atual">{{d.valorFormatado}}</span>
+              <span class="valor-delta">{{fmtDelta(d.variacao)}}</span>
+            </span>
+            <span class="valor-base">vs. {{d.valorAnteriorFormatado}}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="progresso" ng-if="carregando.dados" style="margin-bottom:10px"><i></i></div>
+      <div class="cartao estado erro" ng-if="erros.dados">
+        <span class="titulo">Não foi possível carregar</span>
+        {{erros.dados}}
+        <div class="acoes"><button class="btn" ng-click="tentarNovamente(); $event.stopPropagation()">Tentar novamente</button></div>
+      </div>
+
+      <!-- gráfico da dimensão -->
+      <div class="cartao grafico-cartao" ng-if="resultado.dados.length" style="margin-bottom:12px">
+        <!-- Fecha o circuito chip → coluna destacada → série desenhada. -->
+        <div class="grafico-titulo">
+          <span class="pt" aria-hidden="true"></span>
+          <span>{{resultado.nomeIndicador}} por {{resultado.nomeDimensao}}</span>
+          <span class="periodo">· {{resultado.periodo.rotulo}}</span>
+        </div>
+        <div class="grafico-caixa" ng-class="{alta: linhasVisiveis().length > 18 && tipoGrafico === 'barra' && !resultado.evolucao}">
+          <canvas id="graficoDim"></canvas>
+        </div>
+        <p class="chips-dica" style="margin:6px 2px 4px" ng-if="!resultado.evolucao">
+          Clique numa barra (ou na lupa da tabela) para ver a evolução mensal daquele item.
+        </p>
+      </div>
+
+      <!-- tendência mensal do corte inteiro -->
+      <div class="cartao tend" ng-if="resultado.dados.length && !resultado.evolucao">
+        <div class="t-cab">
+          <div>
+            <h3>Tendência mensal — {{tend.ano}}</h3>
+            <p>
+              Total do corte mês a mês, numa consulta só. Sempre o ano inteiro, mesmo com mês ou dia filtrado acima.
+              <span ng-if="resultado.composta">As duas fontes são casadas pelo mês, então valem as mesmas ressalvas do ×2.</span>
+            </p>
+          </div>
+          <div class="acoes">
+            <label class="sr-only" for="tendAno">Ano da tendência</label>
+            <select id="tendAno" class="sel" ng-model="tend.ano" ng-change="carregarTendencia(true)"
+                    ng-options="a as a for a in anos" ng-if="tend.aberta" ng-click="$event.stopPropagation()"></select>
+            <button class="btn pequeno" ng-if="tend.aberta" ng-class="{ativo: tend.yoy}"
+                    aria-pressed="{{!!tend.yoy}}"
+                    ng-click="alternarYoY(); $event.stopPropagation()"
+                    title="Compara com o mesmo mês do ano anterior — é uma segunda varredura da tabela">vs. ano anterior</button>
+            <button class="btn pequeno" ng-click="alternarTendencia(); $event.stopPropagation()"
+                    aria-expanded="{{!!tend.aberta}}">
+              {{tend.aberta ? 'Ocultar' : (dimensao.pesado ? 'Carregar tendência (consulta pesada)' : 'Ver tendência')}}
+            </button>
+          </div>
+        </div>
+
+        <div class="t-corpo" ng-if="tend.aberta">
+          <div class="progresso" ng-if="carregando.tendencia"><i></i></div>
+          <div class="estado erro compacto" ng-if="tend.erro">
+            {{tend.erro}}
+            <div class="acoes"><button class="btn pequeno" ng-click="carregarTendencia(true); $event.stopPropagation()">Tentar novamente</button></div>
+          </div>
+          <div class="grafico-caixa baixa" ng-show="tend.dados.dados.length">
+            <canvas id="graficoTend"></canvas>
+          </div>
+          <div class="estado compacto" ng-if="tend.dados && !tend.dados.dados.length">Sem movimento mensal neste corte em {{tend.ano}}.</div>
+        </div>
+      </div>
+
+      <!-- tabela -->
+      <div class="cartao tabela-cartao" ng-if="resultado.dados.length">
+        <div class="tabela-rolagem">
+          <table class="tg" var-css="{'--dim-cor': dimensao.corGrupo}">
+            <caption class="sr-only">
+              {{resultado.nomeDimensao}} por {{resultado.nomeIndicador}} em {{resultado.periodo.rotulo}}.
+              Cabeçalhos são botões: Enter ordena pela coluna.
+            </caption>
+            <thead>
+              <tr>
+                <th class="rotulo" scope="col" role="button" tabindex="0"
+                    ng-click="ordenarPor(indicador)" ng-keydown="ordenarPorTecla($event, indicador)">{{resultado.nomeDimensao}}</th>
+                <th ng-repeat="i in colunasVisiveis() track by i.chave" scope="col" role="button" tabindex="0"
+                    ng-class="{ativa: indicador === i.chave}" aria-sort="{{ariaSortDe(i.chave)}}"
+                    ng-click="ordenarPor(i.chave); $event.stopPropagation()"
+                    ng-keydown="ordenarPorTecla($event, i.chave)"
+                    title="Ordenar por {{i.nome}}">
+                  <span class="pt" ng-if="indicador === i.chave" aria-hidden="true"></span>{{i.nome}}<span
+                    class="ord" ng-if="indicador === i.chave" aria-hidden="true">{{ordem === 'desc' ? '▼' : '▲'}}</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr ng-repeat="linha in linhasVisiveis()" ng-class="{anomala: linha.anomala && !mostrarAnomalias}">
+                <td class="rotulo">
+                  <div class="cel-rotulo">
+                    <span class="pos" ng-if="!resultado.evolucao" aria-hidden="true">{{$index + 1}}</span>
+                    <span class="txt">
+                      {{linha.label}}
+                      <span class="barra-part" ng-if="!resultado.evolucao" aria-hidden="true">
+                        <i ng-style="{width: participacao(linha) + '%'}"></i>
+                      </span>
+                    </span>
+                    <button class="lupa" ng-if="!resultado.evolucao"
+                            ng-click="abrirDrill(linha, $event)"
+                            aria-label="Ver evolução mensal de {{linha.label}}"
+                            title="Ver evolução mensal deste item">🔍</button>
+                  </div>
+                </td>
+                <td ng-repeat="i in colunasVisiveis() track by i.chave"
+                    ng-class="[indicador === i.chave ? 'destaque' : '', classeMeta(linha, i)]">
+                  {{linha[i.chave + '_fmt']}}
+                  <span class="var-chip" ng-if="resultado.comparado && indicador === i.chave"
+                        ng-class="classeDelta(linha[i.chave + '_var'], i.melhor)">
+                    {{setaDelta(linha[i.chave + '_var'])}}{{linha[i.chave + '_var'] == null ? '' : fmtDelta(linha[i.chave + '_var'])}}
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr>
+                <td class="rotulo">TOTAL <span style="font-weight:500;color:var(--g-texto-3)">(base inteira)</span></td>
+                <td ng-repeat="i in colunasVisiveis() track by i.chave">
+                  {{resultado.totais[i.chave + '_fmt']}}
+                  <span class="var-chip" ng-if="resultado.comparado && indicador === i.chave"
+                        ng-class="classeDelta(resultado.totais[i.chave + '_var'], i.melhor)">
+                    {{setaDelta(resultado.totais[i.chave + '_var'])}}{{fmtDelta(resultado.totais[i.chave + '_var'])}}
+                  </span>
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+        <div class="tabela-rodape">
+          <span>
+            Total sobre todas as linhas da base, não só as exibidas.
+            <em ng-if="resultado.naoAditivos.length">
+              “≈” marca contagens distintas somadas por grupo — o mesmo atendimento pode entrar em mais de uma linha.
+            </em>
+          </span>
+          <span>{{resultado.grupo}} · {{resultado.periodo.rotulo}}</span>
+        </div>
+      </div>
+
+      <div class="cartao estado" ng-if="resultado && !resultado.dados.length && !carregando.dados">
+        <span class="titulo">Sem dados</span>
+        Nenhum registro nesta dimensão para {{resultado.periodo.rotulo}}.
+        <div class="acoes">
+          <button class="btn pequeno" ng-click="abrirPainelPeriodo($event)">Trocar de período</button>
+          <button class="btn pequeno" ng-if="buscaTabela" ng-click="limparBusca(); $event.stopPropagation()">Limpar filtro</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ══════════════ DRILL-DOWN ══════════════ -->
+<div class="fundo-modal" ng-if="drill" ng-click="fecharDrill()"></div>
+<aside class="drill" ng-if="drill" ng-click="$event.stopPropagation()"
+       role="dialog" aria-modal="true" aria-labelledby="drillTitulo">
+  <div class="d-cab">
+    <div>
+      <h3 id="drillTitulo">{{drill.label}}</h3>
+      <p>Evolução mensal em {{ano}} · {{dimensao.grupo}} · {{dimensao.nome}}</p>
+    </div>
+    <button class="fechar" id="drillFechar" ng-click="fecharDrill()" aria-label="Fechar" title="Fechar (Esc)">×</button>
+  </div>
+  <div class="d-corpo">
+    <div class="progresso" ng-if="carregando.drill"><i></i></div>
+    <div class="estado erro" ng-if="drill.erro">{{drill.erro}}</div>
+
+    <div ng-if="drill.dados">
+      <!-- Ranking, participação e estatísticas da série saem da resposta
+           que o drill já buscava: nenhuma consulta a mais. -->
+      <div class="d-stats" ng-if="drill.stats">
+        <div class="d-stat">
+          <span class="rot">Ranking</span>
+          <span class="val">{{drill.stats.posicao}}º</span>
+          <span class="sub">de {{drill.stats.total}} · {{drill.stats.participacao}}% do total</span>
+        </div>
+        <div class="d-stat">
+          <span class="rot">Média mensal</span>
+          <span class="val">{{drill.stats.mediaFmt}}</span>
+          <span class="sub">{{drill.stats.meses}} meses com movimento</span>
+        </div>
+        <div class="d-stat">
+          <span class="rot">Melhor mês</span>
+          <span class="val">{{drill.stats.picoFmt}}</span>
+          <span class="sub">{{drill.stats.picoMes}}</span>
+        </div>
+        <div class="d-stat">
+          <span class="rot">Pior mês</span>
+          <span class="val">{{drill.stats.valeFmt}}</span>
+          <span class="sub">{{drill.stats.valeMes}}</span>
+        </div>
+        <div class="d-stat" ng-if="drill.stats.varPeriodo !== null">
+          <span class="rot">1º → último mês</span>
+          <span class="val" ng-class="classeDelta(drill.stats.varPeriodo, drill.dados.melhor)">{{fmtDelta(drill.stats.varPeriodo)}}</span>
+          <span class="sub">variação no período</span>
+        </div>
+      </div>
+
+      <div class="kpis" style="margin-bottom:14px">
+        <div class="kpi" ng-repeat="i in drill.dados.indicadores track by i.chave">
+          <div class="k-nome-row"><span class="k-nome">{{i.nome}}</span></div>
+          <span class="k-valor">{{drill.dados.totais[i.chave + '_fmt']}}</span>
+        </div>
+      </div>
+
+      <div class="grafico-caixa baixa" ng-if="drill.dados.dados.length">
+        <canvas id="graficoDrill"></canvas>
+      </div>
+
+      <div class="tabela-rolagem drill-tabela-rolagem" ng-if="drill.dados.dados.length">
+        <table class="tg tg-drill">
+          <thead>
+            <tr>
+              <th class="rotulo" scope="col">Mês</th>
+              <th ng-repeat="i in drill.dados.indicadores track by i.chave" scope="col">{{i.nome}}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr ng-repeat="l in drill.dados.dados">
+              <td class="rotulo">{{l.label}}</td>
+              <td ng-repeat="i in drill.dados.indicadores track by i.chave">{{l[i.chave + '_fmt']}}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="estado" ng-if="!drill.dados.dados.length">Sem movimento mensal para este item em {{ano}}.</div>
+    </div>
+  </div>
+</aside>
+
+<!-- ══════════════ PALETA DE COMANDOS (Ctrl+K) ══════════════ -->
+<!-- Busca única sobre o índice indicador × dimensão que vem do catálogo:
+     a direção digita o nome do NÚMERO ("glosa", "custo por internação")
+     e cai direto no corte certo, sem saber onde ele mora no menu.
+     Padrão combobox+listbox: o foco fica no campo o tempo todo. -->
+<div class="fundo-modal" ng-if="palheta.aberta" ng-click="fecharPalheta()"></div>
+<div class="palheta" ng-if="palheta.aberta" ng-click="$event.stopPropagation()"
+     role="dialog" aria-modal="true" aria-label="Buscar indicador ou corte">
+  <div class="pal-campo">
+    <span class="lupa" aria-hidden="true">⌕</span>
+    <label class="sr-only" for="campoPalheta">Buscar indicador ou corte</label>
+    <input id="campoPalheta" type="text" ng-model="palheta.termo" ng-change="buscarNaPalheta()"
+           role="combobox" aria-expanded="true" aria-controls="palLista" aria-autocomplete="list"
+           aria-activedescendant="{{palheta.idSel}}" autocomplete="off"
+           placeholder="Ex.: glosa convênio · custo material setor · óbito clínica">
+    <button class="btn pequeno" ng-click="fecharPalheta()">Esc</button>
+  </div>
+
+  <div class="pal-lista" id="palLista" role="listbox" aria-label="Resultados">
+    <div class="pal-item" ng-repeat="r in palheta.resultados track by r.id"
+         role="option" id="pal-item-{{$index}}" aria-selected="{{$index === palheta.sel}}" tabindex="-1"
+         ng-class="{sel: $index === palheta.sel}" var-css="{'--pal-cor': r.cor}"
+         ng-mouseenter="palheta.sel = $index"
+         ng-click="abrirDaPalheta(r); $event.stopPropagation()">
+      <span class="pt" aria-hidden="true"></span>
+      <span class="txt">
+        <b>{{r.nomeInd}}</b>
+        <span>por {{r.nomeDim}} · {{r.grupo}}</span>
+      </span>
+      <span class="tag lenta" ng-if="r.pesado">lenta</span>
+      <span class="tag">{{r.nomeArea}}</span>
+    </div>
+
+    <div class="pal-vazio" ng-if="palheta.termo && !palheta.resultados.length">
+      <p>Nada encontrado para “{{palheta.termo}}”. Busque pelo nome do número (“glosado”, “ocupação”) ou do corte (“convênio”, “setor”).</p>
+    </div>
+
+    <!-- Estado vazio com sugestões clicáveis: a paleta passa a ensinar o
+         que ela sabe fazer em vez de só pedir que a pessoa adivinhe. -->
+    <div class="pal-vazio" ng-if="!palheta.termo">
+      <p>{{catalogo.totalIndicadores}} indicadores × {{catalogo.totalDimensoes}} cortes. Comece por um destes:</p>
+      <div class="chips">
+        <button class="chip" ng-repeat="r in sugestoesPalheta track by r.id" var-css="{'--chip-cor': r.cor}"
+                ng-click="abrirDaPalheta(r); $event.stopPropagation()">
+          <span class="pt" aria-hidden="true"></span>{{r.nomeInd}} <span class="dir">por {{r.nomeDim}}</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="pal-rodape">
+    <span><kbd>↑</kbd><kbd>↓</kbd> navegar</span>
+    <span><kbd>Enter</kbd> abrir</span>
+    <span><kbd>Esc</kbd> fechar</span>
+    <span class="contagem" role="status" aria-live="polite" ng-if="palheta.termo">
+      {{palheta.resultados.length}}<span ng-if="palheta.total > palheta.resultados.length"> de {{palheta.total}}</span> resultados
+    </span>
+  </div>
+</div>
+
+<!-- ══════════════ ATALHOS ══════════════ -->
+<div class="fundo-modal" ng-if="painel.atalhos" ng-click="fecharPaineis()"></div>
+<div class="pop" ng-if="painel.atalhos" ng-click="$event.stopPropagation()"
+     role="dialog" aria-modal="true" aria-label="Atalhos de teclado"
+     style="position:fixed;z-index:var(--g-z-modal);top:50%;left:50%;transform:translate(-50%,-50%);min-width:340px">
+  <h4>Atalhos de teclado</h4>
+  <div class="atalhos">
+    <div><span>Buscar qualquer dado</span><kbd>Ctrl+K</kbd></div>
+    <div><span>Buscar corte no menu</span><kbd>/</kbd></div>
+    <div><span>Ir para a área 1…9</span><kbd>1…9</kbd></div>
+    <div><span>Navegar entre abas</span><kbd>← →</kbd></div>
+    <div><span>Mostrar/ocultar menu</span><kbd>B</kbd></div>
+    <div><span>Trocar tema</span><kbd>T</kbd></div>
+    <div><span>Comparar período</span><kbd>C</kbd></div>
+    <div><span>Exportar CSV</span><kbd>E</kbd></div>
+    <div><span>Imprimir</span><kbd>P</kbd></div>
+    <div><span>Atualizar</span><kbd>R</kbd></div>
+    <div><span>Anomalias</span><kbd>A</kbd></div>
+    <div><span>Densidade</span><kbd>D</kbd></div>
+    <div><span>Fechar</span><kbd>Esc</kbd></div>
+  </div>
+  <!-- Teclas soltas colidem com a navegação rápida de leitor de tela
+       (b = botão, t = tabela, d = landmark), daí o interruptor. -->
+  <div class="linha" style="margin-top:10px">
+    <input type="checkbox" id="atalhosTecla" ng-checked="atalhosTecla" ng-click="alternarAtalhosTecla()">
+    <label for="atalhosTecla">Atalhos de uma tecla (B, T, C, E, P, R, A, D)</label>
+  </div>
+  <p class="chips-dica" style="margin:4px 0 0">Ctrl+K, / e Esc continuam ativos mesmo desligado.</p>
+  <div class="acoes"><button class="btn pequeno" ng-click="fecharPaineis()">Fechar</button></div>
+</div>
+
+<!-- ══════════════ TOAST ══════════════ -->
+<div class="toast" ng-if="toast" role="status" aria-live="polite">
+  <span aria-hidden="true">{{toast.tipo === 'erro' ? '⚠' : '✓'}}</span> {{toast.msg}}
+</div>
+
+<!-- POPOVER "ORIGEM DOS DADOS" — tabela/campo/filtro extraídos da query -->
+<div class="popover-origem" ng-if="origemAberta" ng-click="$event.stopPropagation()"
+     role="dialog" aria-label="Origem dos dados"
+     ng-style="{ top: origemAberta.top + 'px', left: origemAberta.left + 'px' }">
+  <div class="po-cab">
+    <strong>{{origemAberta.nome || 'Origem dos dados'}}</strong>
+    <button type="button" class="po-fechar" ng-click="fecharOrigem()" aria-label="Fechar">&#10005;</button>
+  </div>
+  <div class="po-linha" ng-if="origemAberta.desc">
+    <span class="po-rotulo">O que é</span>
+    <span class="po-valor po-desc">{{ origemAberta.desc }}</span>
+  </div>
+  <div class="po-linha" ng-if="origemAberta.formula">
+    <span class="po-rotulo">Cálculo</span>
+    <span class="po-valor po-mono">{{ origemAberta.formula }}</span>
+  </div>
+  <div class="po-linha" ng-if="origemAberta.tabelas.length">
+    <span class="po-rotulo">Tabela</span>
+    <span class="po-valor po-mono">{{ origemAberta.tabelas.join(', ') }}</span>
+  </div>
+  <div class="po-linha" ng-if="origemAberta.campo">
+    <span class="po-rotulo">Campo</span>
+    <span class="po-valor po-mono">{{ origemAberta.campo }}</span>
+  </div>
+  <div class="po-linha" ng-if="origemAberta.filtro">
+    <span class="po-rotulo">Filtro</span>
+    <span class="po-valor po-mono">{{ origemAberta.filtro }}</span>
+  </div>
+</div>
+
+<script src="js/geral.controller.js?v=4"></script>
+</body>
+</html>

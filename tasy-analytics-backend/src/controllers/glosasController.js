@@ -1,6 +1,8 @@
 const pool = require('../config/database');
 const { extrairPeriodo, obterLimite } = require('../utils/periodo');
 const { aplicarEscopo } = require('../services/escopoAcesso');
+const { extrairMetadadosSql } = require('../utils/extrairFontes');
+const logger = require('../config/logger');
 
 const DIMENSOES_GLOSAS = {
   convenio: {
@@ -15,7 +17,7 @@ const DIMENSOES_GLOSAS = {
         COALESCE(SUM(vl_adicional), 0) as valor_adicional,
         COALESCE(SUM(vl_retorno), 0) as valor_retorno
       FROM ods.glosas_protocolos gp
-      WHERE ano_ref = $1 AND mes_ref = $2 /* ESCOPO */
+      WHERE ano_ref = $1 AND ($2::text IS NULL OR mes_ref = $2) /* ESCOPO */
       GROUP BY ds_convenio
       HAVING SUM(vl_protocolo) > 0
     `
@@ -32,7 +34,7 @@ const DIMENSOES_GLOSAS = {
         COALESCE(SUM(vl_adicional), 0) as valor_adicional,
         COALESCE(SUM(vl_retorno), 0) as valor_retorno
       FROM ods.glosas_protocolos gp
-      WHERE ano_ref = $1 AND mes_ref = $2 /* ESCOPO */
+      WHERE ano_ref = $1 AND ($2::text IS NULL OR mes_ref = $2) /* ESCOPO */
       GROUP BY ds_estabelecimento
       HAVING SUM(vl_protocolo) > 0
     `
@@ -45,7 +47,7 @@ const DIMENSOES_GLOSAS = {
         COALESCE(SUM(vl_glosa), 0) as valor_glosado,
         COALESCE(SUM(vl_pago), 0) as valor_recebido
       FROM ods.glosas_por_item gi
-      WHERE ano_ref = $1 AND mes_ref = $2 /* ESCOPO */
+      WHERE ano_ref = $1 AND ($2::text IS NULL OR mes_ref = $2) /* ESCOPO */
       GROUP BY ds_setor_atendimento
       HAVING SUM(vl_item) > 0
     `
@@ -62,7 +64,7 @@ const DIMENSOES_GLOSAS = {
         COALESCE(SUM(vl_adicional), 0) as valor_adicional,
         COALESCE(SUM(vl_retorno), 0) as valor_retorno
       FROM ods.glosas_protocolos gp
-      WHERE ano_ref = $1 AND mes_ref = $2 /* ESCOPO */
+      WHERE ano_ref = $1 AND ($2::text IS NULL OR mes_ref = $2) /* ESCOPO */
       GROUP BY ds_tipo_convenio
       HAVING SUM(vl_protocolo) > 0
     `
@@ -79,7 +81,7 @@ const DIMENSOES_GLOSAS = {
         COALESCE(SUM(vl_adicional), 0) as valor_adicional,
         COALESCE(SUM(vl_retorno), 0) as valor_retorno
       FROM ods.glosas_protocolos gp
-      WHERE ano_ref = $1 AND mes_ref = $2 /* ESCOPO */
+      WHERE ano_ref = $1 AND ($2::text IS NULL OR mes_ref = $2) /* ESCOPO */
       GROUP BY ds_tipo_protocolo
       HAVING SUM(vl_protocolo) > 0
     `
@@ -102,6 +104,47 @@ const DIMENSOES_GLOSAS = {
     `
   }
 };
+
+// Coluna (mesma expressão usada como "label" na dimensão de origem) usada
+// para filtrar a evolução mensal quando o drill-down parte de uma linha
+// específica da tabela. "setor" vem de outra tabela (gi), por isso tem
+// query própria em vez de reaproveitar a de gp.
+const COLUNA_FILTRO_MES_GP = {
+  convenio: 'ds_convenio',
+  estabelecimento: 'ds_estabelecimento',
+  tipo_convenio: 'ds_tipo_convenio',
+  tipo_protocolo: 'ds_tipo_protocolo'
+};
+
+function construirQueryMesFiltradaGP(coluna) {
+  return `
+    SELECT
+      mes_ref as label,
+      COALESCE(SUM(vl_protocolo), 0) as valor_faturado,
+      COALESCE(SUM(vl_glosado), 0) as valor_glosado,
+      COALESCE(SUM(vl_pago), 0) as valor_recebido,
+      COALESCE(SUM(vl_aceito), 0) as valor_glosa_aceita,
+      COALESCE(SUM(vl_reapresentado), 0) as valor_reapresentado,
+      COALESCE(SUM(vl_adicional), 0) as valor_adicional,
+      COALESCE(SUM(vl_retorno), 0) as valor_retorno
+    FROM ods.glosas_protocolos gp
+    WHERE ano_ref = $1 AND ${coluna} = $2 /* ESCOPO */
+    GROUP BY mes_ref
+    ORDER BY mes_ref
+  `;
+}
+
+const QUERY_MES_FILTRADA_SETOR = `
+  SELECT
+    mes_ref as label,
+    COALESCE(SUM(vl_item), 0) as valor_faturado,
+    COALESCE(SUM(vl_glosa), 0) as valor_glosado,
+    COALESCE(SUM(vl_pago), 0) as valor_recebido
+  FROM ods.glosas_por_item gi
+  WHERE ano_ref = $1 AND COALESCE(ds_setor_atendimento, 'Sem Setor') = $2 /* ESCOPO */
+  GROUP BY mes_ref
+  ORDER BY mes_ref
+`;
 
 const NOMES_DIMENSAO = {
   convenio: 'Convênio',
@@ -176,7 +219,7 @@ function formatarItemIndividual(item, indicador) {
 
 function buscarGlosas(req, res) {
   try {
-    const { dimensao, indicador, modo, ordem, limite: limiteRaw } = req.body;
+    const { dimensao, indicador, modo, ordem, limite: limiteRaw, dimensaoOrigem, rotulo } = req.body;
     const periodo = extrairPeriodo(req.body);
     const limite = obterLimite(req.body);
 
@@ -184,11 +227,29 @@ function buscarGlosas(req, res) {
       return res.status(400).json({ mensagem: 'Dimensão inválida: ' + dimensao });
     }
 
-    const config = DIMENSOES_GLOSAS[dimensao];
-    const params = dimensao === 'mes' ? [periodo.anoRef] : [periodo.anoRef, periodo.mesRef];
+    // Drill-down de uma linha específica: evolução mensal filtrada pelo
+    // item clicado, não o indicador inteiro.
+    const filtrarPorSetor = dimensao === 'mes' && dimensaoOrigem === 'setor' && rotulo != null && rotulo !== '';
+    const colunaFiltroGP = dimensao === 'mes' ? COLUNA_FILTRO_MES_GP[dimensaoOrigem] : null;
+    const filtrarPorGP = !!colunaFiltroGP && rotulo != null && rotulo !== '';
 
-    const tabelaEscopo = dimensao === 'setor' ? 'gi' : 'gp';
+    let config, params, tabelaEscopo;
+    if (filtrarPorSetor) {
+      config = { query: QUERY_MES_FILTRADA_SETOR };
+      params = [periodo.anoRef, rotulo];
+      tabelaEscopo = 'gi';
+    } else if (filtrarPorGP) {
+      config = { query: construirQueryMesFiltradaGP(colunaFiltroGP) };
+      params = [periodo.anoRef, rotulo];
+      tabelaEscopo = 'gp';
+    } else {
+      config = DIMENSOES_GLOSAS[dimensao];
+      params = dimensao === 'mes' ? [periodo.anoRef] : [periodo.anoRef, periodo.mesRef];
+      tabelaEscopo = dimensao === 'setor' ? 'gi' : 'gp';
+    }
+
     const consulta = aplicarEscopo(config.query, req.usuario, tabelaEscopo, params);
+    const origemDados = extrairMetadadosSql(config.query);
     pool.query(consulta.query, consulta.parametros).then(function(result) {
       let dados = result.rows;
 
@@ -199,10 +260,21 @@ function buscarGlosas(req, res) {
         }
 
         dados = dados.map(function(row) {
+          const item = {
+            valor_faturado: parseFloat(row.valor_faturado) || 0,
+            valor_glosado: parseFloat(row.valor_glosado) || 0,
+            valor_recebido: parseFloat(row.valor_recebido) || 0,
+            valor_glosa_aceita: parseFloat(row.valor_glosa_aceita) || 0,
+            valor_reapresentado: parseFloat(row.valor_reapresentado) || 0,
+            valor_adicional: parseFloat(row.valor_adicional) || 0,
+            valor_retorno: parseFloat(row.valor_retorno) || 0
+          };
+          calcularDerivados(item);
+          const valor = item[indicador];
           return {
             label: row.label,
-            valorRaw: parseFloat(row[indicador]) || 0,
-            valorFormatado: cfg.isMoeda ? formatarMoeda(row[indicador]) : formatarPct(row[indicador])
+            valorRaw: valor || 0,
+            valorFormatado: cfg.isMoeda ? formatarMoeda(valor) : formatarPct(valor)
           };
         });
 
@@ -219,7 +291,9 @@ function buscarGlosas(req, res) {
           color: cfg.color,
           badgeClass: cfg.badgeClass,
           totalBase: totalBase,
-          dados: dados
+          dados: dados,
+          fontes: origemDados.tabelas,
+          origemDados: origemDados
         });
       }
 
@@ -248,14 +322,16 @@ function buscarGlosas(req, res) {
         nomeDimensao: NOMES_DIMENSAO[dimensao] || dimensao,
         modoTodos: true,
         totalBase: totalBase,
-        dados: dados
+        dados: dados,
+        fontes: origemDados.tabelas,
+        origemDados: origemDados
       });
     }).catch(function(error) {
-      console.error('Erro na query de glosas:', error);
+      logger.error({ err: error }, 'Erro na query de glosas');
       res.status(500).json({ mensagem: 'Erro ao consultar dados de glosas' });
     });
   } catch (error) {
-    console.error('Erro no controller de glosas:', error);
+    logger.error({ err: error }, 'Erro no controller de glosas');
     res.status(500).json({ mensagem: 'Erro interno do servidor' });
   }
 }

@@ -1,6 +1,8 @@
 const { Pool } = require('pg');
 require('dotenv').config();
 
+const logger = require('./logger');
+
 const pool = new Pool({
   host: process.env.DB_HOST,
   port: parseInt(process.env.DB_PORT),
@@ -12,7 +14,7 @@ const pool = new Pool({
 });
 
 pool.on('error', (err) => {
-  console.error('Erro inesperado no pool PostgreSQL:', err);
+  logger.error({ err }, 'Erro inesperado no pool PostgreSQL');
 });
 
 module.exports = pool;

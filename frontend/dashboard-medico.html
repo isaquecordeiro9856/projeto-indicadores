@@ -16,16 +16,16 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="css/prototype.css">
+  <link rel="stylesheet" href="css/dashboard.css">
   <script src="js/auth.service.js"></script>
-  <script src="js/api.service.js"></script>
   <script src="js/autorizacao.service.js"></script>
+  <script src="js/api.service.js"></script>
+  <script src="js/dashboard-utils.service.js"></script>
   <script src="js/dashboard.controller.js"></script>
   <script src="js/dashboard-domain-ui.js"></script>
 </head>
 
 <body ng-controller="DashboardController" data-dashboard="medico">
-<h1 class="sr-only">Painel Analítico de Produção, Faturamento e MatMed - TASY Analytics</h1>
 
 <!-- BACKDROP DO MENU LATERAL (VISÍVEL SOMENTE EM TELAS REDUZIDAS) -->
 <div class="sidebar-backdrop" ng-class="{'mostrar': !sidebarColapsada}" ng-click="toggleSidebar()"></div>
@@ -121,8 +121,10 @@
 
     <!-- DICA DE ATALHOS DE TECLADO -->
     <div class="sidebar-footer-hints">
-      ⌨️ <b>Ctrl+K</b> buscar dimensão &nbsp;·&nbsp; <b>/</b> buscar na tabela<br>
-      <b>Ctrl+E</b> exportar CSV &nbsp;·&nbsp; <b>Esc</b> limpar buscas
+      <div class="hint-row"><kbd>Ctrl+K</kbd><span>Buscar dimensão</span></div>
+      <div class="hint-row"><kbd>/</kbd><span>Buscar na tabela</span></div>
+      <div class="hint-row"><kbd>Ctrl+E</kbd><span>Exportar CSV</span></div>
+      <div class="hint-row"><kbd>Esc</kbd><span>Limpar buscas</span></div>
     </div>
   </aside>
 
@@ -133,12 +135,98 @@
     
     <!-- CABEÇALHO SUPERIOR (FILTROS GLOBAIS E EXPORTAÇÃO) -->
     <header class="top-header">
-      
-      <div class="header-left">
-        <!-- BOTÃO TOGGLE SIDEBAR (SEMPRE VISÍVEL) -->
-        <button class="btn-toggle-sidebar" ng-click="toggleSidebar()" title="Recolher / Expandir Menu Lateral">
-          <span>{{ sidebarColapsada ? '☰ Menu Lateral' : '◀ Ocultar Menu' }}</span>
-        </button>
+
+      <!-- LINHA 1: IDENTIDADE DA PÁGINA + AÇÕES -->
+      <div class="toolbar-row toolbar-row-actions">
+        <div class="header-left">
+          <!-- BOTÃO TOGGLE SIDEBAR (SEMPRE VISÍVEL) -->
+          <button class="btn-toggle-sidebar" ng-click="toggleSidebar()" title="Recolher / Expandir Menu Lateral" aria-label="Recolher ou expandir menu lateral">
+            <svg class="ico" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            <span>{{ sidebarColapsada ? 'Menu' : 'Ocultar' }}</span>
+          </button>
+
+          <div class="page-heading">
+            <h1 class="page-title">Painel</h1>
+            <p class="page-subtitle">Produção médica · procedimentos e repasse</p>
+          </div>
+        </div>
+
+        <!-- AÇÕES: TEMA, COMPARTILHAR, VIEWS, COPIAR, EXPORTAR E IMPRIMIR -->
+        <div class="header-right">
+          <button type="button" class="btn-icon-only" ng-click="alternarTema()" title="{{ temaEscuro ? 'Mudar para tema claro' : 'Mudar para tema escuro' }}" aria-label="Alternar tema">
+            <svg ng-if="!temaEscuro" class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            <svg ng-if="temaEscuro" class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+          </button>
+
+          <button type="button" class="btn-icon-only" ng-click="compartilharVisao()" title="Copiar link desta visão (filtros incluídos)" aria-label="Compartilhar visão">
+            <svg class="ico" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+          </button>
+
+          <div class="views-dropdown">
+            <button type="button" class="btn-action" ng-click="menuViewsAberto = !menuViewsAberto" title="Visões salvas">
+              <svg class="ico" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              <span>Views</span>
+              <span style="font-size: 9px; opacity: .7;">▼</span>
+            </button>
+            <div class="views-menu" ng-if="menuViewsAberto">
+              <button type="button" class="view-item" ng-click="salvarViewAtual()" style="color: var(--accent);">
+                <svg class="ico" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Salvar visão atual...
+              </button>
+              <div class="menu-sep"></div>
+              <div class="views-vazio" ng-if="!viewsSalvas.length">Nenhuma visão salva ainda.</div>
+              <div class="view-item" role="button" tabindex="0" ng-repeat="v in viewsSalvas" ng-click="aplicarView(v)" ng-keydown="ativarTecla($event, aplicarView, v)">
+                <span style="flex:1; min-width:0;">
+                  {{ v.nome }}
+                  <span class="view-desc">{{ v.desc }}</span>
+                </span>
+                <button type="button" class="view-del" ng-click="excluirView($event, v)" title="Excluir visão">✕</button>
+              </div>
+            </div>
+          </div>
+
+          <button type="button" class="btn-action" ng-click="copiarTabela()" title="Copiar dados tabulados para área de transferência">
+            <svg class="ico" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            <span>Copiar</span>
+          </button>
+
+          <div class="exportar-dropdown">
+            <button type="button" class="btn-action" ng-click="menuExportarAberto = !menuExportarAberto" title="Exportar dados">
+              <svg class="ico" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              <span>Exportar</span>
+              <span style="font-size: 9px; opacity: .7;">▼</span>
+            </button>
+            <div class="exportar-menu" ng-if="menuExportarAberto">
+              <button type="button" ng-click="executarExportacao('csv')">
+                <svg class="ico" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                <span>CSV — registros exibidos<small>Respeita o filtro Top-N atual</small></span>
+              </button>
+              <button type="button" ng-click="executarExportacao('csv_completo')">
+                <svg class="ico" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+                <span>CSV — base completa<small>Todos os registros, ignora o Top-N</small></span>
+              </button>
+              <div class="menu-sep"></div>
+              <button type="button" ng-click="executarExportacao('excel')">
+                <svg class="ico" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
+                <span>Excel (.xls)<small>Planilha formatada do período</small></span>
+              </button>
+              <div class="menu-sep"></div>
+              <button type="button" ng-click="executarExportacao('png')">
+                <svg class="ico" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                <span>Imagem PNG<small>Gráfico principal em alta resolução</small></span>
+              </button>
+            </div>
+          </div>
+
+          <button type="button" class="btn-action btn-primary" ng-click="imprimirRelatorio()" title="Imprimir ou salvar PDF executivo (Ctrl+P)">
+            <svg class="ico" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+            <span>Imprimir PDF</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- LINHA 2: FILTROS DE PERÍODO, VISÃO E ORDENAÇÃO -->
+      <div class="toolbar-row toolbar-row-filters">
 
         <!-- GRANULARIDADE -->
         <div class="filter-group highlight">
@@ -208,79 +296,6 @@
         </div>
       </div>
 
-      <!-- AÇÕES: TEMA, COMPARTILHAR, VIEWS, COPIAR, EXPORTAR E IMPRIMIR -->
-      <div class="header-right">
-        <button type="button" class="btn-icon-only" ng-click="alternarTema()" title="{{ temaEscuro ? 'Mudar para tema claro' : 'Mudar para tema escuro' }}" aria-label="Alternar tema">
-          <svg ng-if="!temaEscuro" class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-          <svg ng-if="temaEscuro" class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
-        </button>
-
-        <button type="button" class="btn-icon-only" ng-click="compartilharVisao()" title="Copiar link desta visão (filtros incluídos)" aria-label="Compartilhar visão">
-          <svg class="ico" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-        </button>
-
-        <div class="views-dropdown">
-          <button type="button" class="btn-action" ng-click="menuViewsAberto = !menuViewsAberto" title="Visões salvas">
-            <svg class="ico" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-            <span>Views</span>
-            <span style="font-size: 9px; opacity: .7;">▼</span>
-          </button>
-          <div class="views-menu" ng-if="menuViewsAberto">
-            <button type="button" class="view-item" ng-click="salvarViewAtual()" style="color: var(--accent);">
-              <svg class="ico" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              Salvar visão atual...
-            </button>
-            <div class="menu-sep"></div>
-            <div class="views-vazio" ng-if="!viewsSalvas.length">Nenhuma visão salva ainda.</div>
-            <div class="view-item" role="button" tabindex="0" ng-repeat="v in viewsSalvas" ng-click="aplicarView(v)" ng-keydown="ativarTecla($event, aplicarView, v)">
-              <span style="flex:1; min-width:0;">
-                {{ v.nome }}
-                <span class="view-desc">{{ v.desc }}</span>
-              </span>
-              <button type="button" class="view-del" ng-click="excluirView($event, v)" title="Excluir visão">✕</button>
-            </div>
-          </div>
-        </div>
-
-        <button type="button" class="btn-action" ng-click="copiarTabela()" title="Copiar dados tabulados para área de transferência">
-          <svg class="ico" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-          <span>Copiar</span>
-        </button>
-
-        <div class="exportar-dropdown">
-          <button type="button" class="btn-action" ng-click="menuExportarAberto = !menuExportarAberto" title="Exportar dados">
-            <svg class="ico" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            <span>Exportar</span>
-            <span style="font-size: 9px; opacity: .7;">▼</span>
-          </button>
-          <div class="exportar-menu" ng-if="menuExportarAberto">
-            <button type="button" ng-click="executarExportacao('csv')">
-              <svg class="ico" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-              <span>CSV — registros exibidos<small>Respeita o filtro Top-N atual</small></span>
-            </button>
-            <button type="button" ng-click="executarExportacao('csv_completo')">
-              <svg class="ico" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
-              <span>CSV — base completa<small>Todos os registros, ignora o Top-N</small></span>
-            </button>
-            <div class="menu-sep"></div>
-            <button type="button" ng-click="executarExportacao('excel')">
-              <svg class="ico" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
-              <span>Excel (.xls)<small>Planilha formatada do período</small></span>
-            </button>
-            <div class="menu-sep"></div>
-            <button type="button" ng-click="executarExportacao('png')">
-              <svg class="ico" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-              <span>Imagem PNG<small>Gráfico principal em alta resolução</small></span>
-            </button>
-          </div>
-        </div>
-
-        <button type="button" class="btn-action btn-primary" ng-click="imprimirRelatorio()" title="Imprimir ou salvar PDF executivo (Ctrl+P)">
-          <svg class="ico" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-          <span>Imprimir PDF</span>
-        </button>
-      </div>
-
     </header>
 
     <!-- BARRA INFORMATIVA DE PERÍODO & COMPARATIVO -->
@@ -292,7 +307,8 @@
       </div>
 
       <div class="period-info-item banner-meta" ng-if="respostaBackend">
-        {{ respostaBackend.nomeDimensao }} · {{ respostaBackend.totalBase }} itens na base
+        {{ respostaBackend.nomeDimensao }} · {{ respostaBackend.totalBase }} itens na base<span ng-if="statusBaseKpi === 'calculando'" class="period-badge-ant" title="Buscando todos os registros para os KPIs refletirem a base inteira, não só o Top-N exibido"> · calculando totais completos…</span><span ng-if="statusBaseKpi === 'amostra'" class="period-badge-ant" title="Não foi possível carregar a base completa; os KPIs refletem apenas os itens exibidos na tabela (Top-N), não o total geral"> · KPIs baseados só no Top-N exibido</span>
+        <button type="button" class="kpi-info" ng-if="respostaBackend.origemDados" ng-click="abrirOrigem($event, respostaBackend.origemDados, null)" aria-label="Ver origem dos dados">ⓘ</button>
       </div>
     </div>
 
@@ -315,8 +331,8 @@
       <!-- ESTADO DE ERRO (FALHA DE API / PROCESSAMENTO) -->
       <div ng-if="erroCarregamento && !carregando" class="empty-state">
         <svg class="ico" aria-hidden="true" focusable="false" style="width: 40px; height: 40px; color: var(--color-val-glosado); margin-bottom: 10px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-        <h2>Falha ao carregar os dados</h2>
-        <p>Não foi possível obter os indicadores do servidor. Verifique a conexão e tente novamente.</p>
+        <h2>{{ erroInfo.titulo || 'Falha ao carregar os dados' }}</h2>
+        <p>{{ erroInfo.mensagem || 'Não foi possível obter os indicadores do servidor. Verifique a conexão e tente novamente.' }}</p>
         <button type="button" class="btn-action btn-primary" style="margin-top: 12px; height: 36px;" ng-click="tentarNovamente()">
           Tentar Novamente
         </button>
@@ -335,112 +351,27 @@
         <div ng-if="respostaBackend.dados.length > 0">
         
         <!-- ============================================================= -->
-        <!-- METAS EXECUTIVAS (SEMÁFORO)                                   -->
-        <!-- ============================================================= -->
-        <div class="metas-bar" ng-if="respostaBackend.modoTodos" style="position: relative;">
-          <span class="chip-meta" ng-class="metaStatus('taxa_glosa').ok ? 'ok' : 'fora'" title="Meta configurável para a taxa de glosa">
-            <span class="m-dot"></span> Taxa Glosa ≤ <b>{{ metas.taxa_glosa.valor }}%</b>
-          </span>
-          <span class="chip-meta" ng-class="metaStatus('pct_recebido').ok ? 'ok' : 'fora'" title="Meta configurável para recebimento">
-            <span class="m-dot"></span> Recebido ≥ <b>{{ metas.pct_recebido.valor }}%</b>
-          </span>
-          <span class="chip-meta" ng-if="conformidadeMeta != null">
-            <span class="m-dot"></span> <b>{{ conformidadeMeta }}</b>/{{ respostaBackend.dados.length }} itens na meta
-          </span>
-
-          <button type="button" class="btn-action btn-metas" ng-click="alternarPainel('painelMetasAberto')" title="Configurar metas dos indicadores">
-            <svg class="ico" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-            Metas
-          </button>
-
-          <div class="colunas-painel metas-painel" ng-if="painelMetasAberto">
-            <div class="meta-linha">
-              <span>Taxa Glosa (máx.)</span>
-              <input type="number" step="0.5" min="0" ng-model="metas.taxa_glosa.valor" ng-change="salvarMetas()">
-              <span>% do faturado</span>
-            </div>
-            <div class="meta-linha">
-              <span>% Recebido (mín.)</span>
-              <input type="number" step="0.5" min="0" max="100" ng-model="metas.pct_recebido.valor" ng-change="salvarMetas()">
-              <span>% do faturado</span>
-            </div>
-            <div class="meta-acoes">
-              <button type="button" class="btn-action" style="height:26px; font-size:11px;" ng-click="restaurarMetasPadrao()">Restaurar padrão</button>
-              <button type="button" class="btn-action" style="height:26px; font-size:11px;" ng-click="alternarPainel('painelMetasAberto', false)">Fechar</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- ============================================================= -->
         <!-- KPIS EXECUTIVOS EM MODO MULTIVARIADO                          -->
         <!-- ============================================================= -->
         <div class="kpi-grid" ng-if="respostaBackend.modoTodos">
-          
-          <div class="kpi-card kpi-faturado kpi-clicavel" role="button" tabindex="0" ng-attr-aria-selected="{{config.indicador === 'valor_faturado' ? 'true' : 'false'}}" ng-click="selecionarIndicador('valor_faturado')" ng-keydown="ativarTecla($event, selecionarIndicador, 'valor_faturado')" title="Clique para análise detalhada do Valor Faturado">
-            <div class="kpi-top">
-              <span class="kpi-label">Faturamento Total</span>
-              <span class="kpi-badge kpi-hint">Receita Bruta</span>
-            </div>
-            <div class="kpi-value" style="color: var(--color-val-faturado);">{{ kpis.faturadoFormatado }}</div>
-            <div class="kpi-sub">
-              <span>Produzido: {{ kpis.produzidoFormatado }}</span>
-              <span ng-if="filtrosTop.modoVisao === 'comparativo'" ng-class="{'text-green': kpis.varFaturado >= 0, 'text-red': kpis.varFaturado < 0}" style="margin-left: auto; font-weight: 700;">
-                {{ kpis.varFaturado >= 0 ? '▲ +' : '▼ ' }}{{ kpis.varFaturado | number:1 }}%
-              </span>
-            </div>
-          </div>
 
-          <div class="kpi-card kpi-recebido kpi-clicavel" role="button" tabindex="0" ng-attr-aria-selected="{{config.indicador === 'valor_recebido' ? 'true' : 'false'}}" ng-click="selecionarIndicador('valor_recebido')" ng-keydown="ativarTecla($event, selecionarIndicador, 'valor_recebido')" title="Clique para análise detalhada do Valor Recebido">
+          <div ng-repeat="card in metricasMultivariadas" class="kpi-card kpi-clicavel {{ card.class }}" role="button" tabindex="0"
+               ng-attr-aria-selected="{{config.indicador === card.key ? 'true' : 'false'}}"
+               ng-click="selecionarIndicador(card.key)"
+               ng-keydown="ativarTecla($event, selecionarIndicador, card.key)"
+               title="Clique para análise detalhada de {{ card.label }}">
             <div class="kpi-top">
-              <span class="kpi-label">Valor Recebido</span>
-              <span class="kpi-badge" style="background:#d1fae5; color:#065f46;">{{ kpis.taxaRecebimento }}% do faturado</span>
+              <span class="kpi-icon-chip" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>
+              <span class="kpi-label" style="flex: 1;">{{ card.label }}</span>
+              <button type="button" class="kpi-info" ng-if="respostaBackend.origemDados" ng-click="abrirOrigem($event, respostaBackend.origemDados, card.key)" aria-label="Ver origem dos dados">ⓘ</button>
+              <span class="kpi-badge" ng-if="card.badgeKey">{{ kpis[card.badgeKey] }}{{ card.badgeSuffix || '' }}</span>
+              <span class="kpi-badge" ng-if="!card.badgeKey">{{ card.badge }}</span>
             </div>
-            <div class="kpi-value" style="color: var(--color-val-recebido);">{{ kpis.recebidoFormatado }}</div>
+            <div class="kpi-value">{{ kpis[card.valueKey] }}</div>
             <div class="kpi-sub">
-              <span>Adimplência efetiva</span>
-              <span ng-if="filtrosTop.modoVisao === 'comparativo'" ng-class="{'text-green': kpis.varRecebido >= 0, 'text-red': kpis.varRecebido < 0}" style="margin-left: auto; font-weight: 700;">
-                {{ kpis.varRecebido >= 0 ? '▲ +' : '▼ ' }}{{ kpis.varRecebido | number:1 }}%
-              </span>
-            </div>
-          </div>
-
-          <div class="kpi-card kpi-glosado kpi-clicavel" role="button" tabindex="0" ng-attr-aria-selected="{{config.indicador === 'valor_glosado' ? 'true' : 'false'}}" ng-click="selecionarIndicador('valor_glosado')" ng-keydown="ativarTecla($event, selecionarIndicador, 'valor_glosado')" title="Clique para análise detalhada das Glosas">
-            <div class="kpi-top">
-              <span class="kpi-label">Glosas Hospitalares</span>
-              <span class="kpi-badge badge-glosa-rate" ng-class="{'badge-glosa-baixa': kpis.taxaGlosaNum <= metas.taxa_glosa.valor, 'badge-glosa-media': kpis.taxaGlosaNum > metas.taxa_glosa.valor && kpis.taxaGlosaNum <= metas.taxa_glosa.valor * 2, 'badge-glosa-alta': kpis.taxaGlosaNum > metas.taxa_glosa.valor * 2}">
-                {{ kpis.taxaGlosa }}% Taxa Glosa
-              </span>
-            </div>
-            <div class="kpi-value" style="color: var(--color-val-glosado);">{{ kpis.glosadoFormatado }}</div>
-            <div class="kpi-sub">
-              <span>Adicional: {{ kpis.adicionalFormatado }}</span>
-              <span ng-if="filtrosTop.modoVisao === 'comparativo'" ng-class="{'text-red': kpis.varGlosado > 0, 'text-green': kpis.varGlosado <= 0}" style="margin-left: auto; font-weight: 700;">
-                {{ kpis.varGlosado >= 0 ? '▲ +' : '▼ ' }}{{ kpis.varGlosado | number:1 }}%
-              </span>
-            </div>
-          </div>
-
-          <div class="kpi-card kpi-ticket kpi-clicavel" role="button" tabindex="0" ng-attr-aria-selected="{{config.indicador === 'qtd_contas' ? 'true' : 'false'}}" ng-click="selecionarIndicador('qtd_contas')" ng-keydown="ativarTecla($event, selecionarIndicador, 'qtd_contas')" title="Clique para análise detalhada da Volumetria">
-            <div class="kpi-top">
-              <span class="kpi-label">Volumetria & Ticket</span>
-              <span class="kpi-badge">{{ kpis.totalContasFormatado }} Contas</span>
-            </div>
-            <div class="kpi-value" style="color: var(--color-val-produzido);">{{ kpis.ticketMedioFormatado }}</div>
-            <div class="kpi-sub">
-              <span>Qtd. Proc.: {{ kpis.procedimentosFormatado }} · Mat/Med: {{ kpis.matmedFormatado }}</span>
-            </div>
-          </div>
-
-          <div class="kpi-card kpi-clicavel" role="button" tabindex="0" ng-attr-aria-selected="{{config.indicador === 'valor_medico' ? 'true' : 'false'}}" ng-click="selecionarIndicador('valor_medico')" ng-keydown="ativarTecla($event, selecionarIndicador, 'valor_medico')" title="Clique para análise detalhada do Repasse Médico">
-            <div class="kpi-top">
-              <span class="kpi-label">Repasse Médico</span>
-              <span class="kpi-badge" style="background:#ede9fe; color:#6b21a8;">{{ kpis.taxaRepasse }}% do faturado</span>
-            </div>
-            <div class="kpi-value" style="color: var(--color-val-medico);">{{ kpis.medicoFormatado }}</div>
-            <div class="kpi-sub">
-              <span>{{ respostaBackend.dados.length }} {{ respostaBackend.nomeDimensao }}s na lista</span>
-              <span ng-if="filtrosTop.modoVisao === 'comparativo'" ng-class="{'text-green': kpis.varMedico >= 0, 'text-red': kpis.varMedico < 0}" style="margin-left: auto; font-weight: 700;">
-                {{ kpis.varMedico >= 0 ? '▲ +' : '▼ ' }}{{ kpis.varMedico | number:1 }}%
+              <span>{{ card.subText }}</span>
+              <span ng-if="filtrosTop.modoVisao === 'comparativo' && card.deltaKey" ng-class="{'text-green': kpis[card.deltaKey] >= 0, 'text-red': kpis[card.deltaKey] < 0}" style="margin-left: auto; font-weight: 700;">
+                {{ kpis[card.deltaKey] >= 0 ? '▲ +' : '▼ ' }}{{ kpis[card.deltaKey] | number:1 }}%
               </span>
             </div>
           </div>
@@ -454,16 +385,20 @@
           
           <div class="kpi-card">
             <div class="kpi-top">
-              <span class="kpi-label">Dimensão em Análise</span>
+              <span class="kpi-icon-chip" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></span>
+              <span class="kpi-label" style="flex: 1;">Dimensão em Análise</span>
+              <button type="button" class="kpi-info" ng-if="respostaBackend.origemDados" ng-click="abrirOrigem($event, respostaBackend.origemDados, null)" aria-label="Ver origem dos dados">ⓘ</button>
               <span class="kpi-badge">{{ respostaBackend.totalBase }} itens</span>
             </div>
-            <div class="kpi-value" style="font-size: 18px; color: var(--primary);">{{ respostaBackend.nomeDimensao }}</div>
+            <div class="kpi-value" style="font-size: 18px;">{{ respostaBackend.nomeDimensao }}</div>
             <div class="kpi-sub">Total cadastrado na base TASY</div>
           </div>
 
           <div class="kpi-card">
             <div class="kpi-top">
-              <span class="kpi-label">Métrica Ativa</span>
+              <span class="kpi-icon-chip" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg></span>
+              <span class="kpi-label" style="flex: 1;">Métrica Ativa</span>
+              <button type="button" class="kpi-info" ng-if="respostaBackend.origemDados" ng-click="abrirOrigem($event, respostaBackend.origemDados, null)" aria-label="Ver origem dos dados">ⓘ</button>
               <span class="kpi-badge" ng-class="respostaBackend.badgeClass">Individual</span>
             </div>
             <div class="kpi-value" style="font-size: 18px;">{{ respostaBackend.nomeIndicador }}</div>
@@ -472,16 +407,20 @@
 
           <div class="kpi-card">
             <div class="kpi-top">
-              <span class="kpi-label">{{ respostaBackend.isPercentual ? 'Média Geral' : 'Soma Total' }} ({{ infoPeriodo.rotuloAtual }})</span>
+              <span class="kpi-icon-chip" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>
+              <span class="kpi-label" style="flex: 1;">{{ respostaBackend.isPercentual ? 'Média Geral' : 'Soma Total' }} ({{ infoPeriodo.rotuloAtual }})</span>
+              <button type="button" class="kpi-info" ng-if="respostaBackend.origemDados" ng-click="abrirOrigem($event, respostaBackend.origemDados, config.indicador)" aria-label="Ver origem dos dados">ⓘ</button>
               <span class="kpi-badge">Exibição</span>
             </div>
-            <div class="kpi-value" style="color: var(--primary-hover);">{{ kpis.somaTotalFormatted }}</div>
+            <div class="kpi-value">{{ kpis.somaTotalFormatted }}</div>
             <div class="kpi-sub">{{ respostaBackend.isPercentual ? 'Taxa ponderada do período' : 'Média: ' + kpis.mediaFormatted + ' por item' }}</div>
           </div>
 
           <div class="kpi-card">
             <div class="kpi-top">
-              <span class="kpi-label">Item Líder (1º Lugar)</span>
+              <span class="kpi-icon-chip" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>
+              <span class="kpi-label" style="flex: 1;">Item Líder (1º Lugar)</span>
+              <button type="button" class="kpi-info" ng-if="respostaBackend.origemDados" ng-click="abrirOrigem($event, respostaBackend.origemDados, config.indicador)" aria-label="Ver origem dos dados">ⓘ</button>
               <span class="kpi-badge" style="background:#fef3c7; color:#b45309;">Top 1</span>
             </div>
             <div class="kpi-value" style="font-size: 17px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
@@ -494,7 +433,9 @@
 
           <div class="kpi-card" ng-if="filtrosTop.modoVisao === 'comparativo'">
             <div class="kpi-top">
-              <span class="kpi-label">Variação Global</span>
+              <span class="kpi-icon-chip" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></span>
+              <span class="kpi-label" style="flex: 1;">Variação Global</span>
+              <button type="button" class="kpi-info" ng-if="respostaBackend.origemDados" ng-click="abrirOrigem($event, respostaBackend.origemDados, config.indicador)" aria-label="Ver origem dos dados">ⓘ</button>
               <span class="kpi-badge">Vs. {{ infoPeriodo.rotuloAnterior }}</span>
             </div>
             <div class="kpi-value" ng-class="{'text-green': kpis.variacaoGlobal >= 0, 'text-red': kpis.variacaoGlobal < 0}">
@@ -610,9 +551,6 @@
               <button class="pill-filter" ng-class="{'active': filtroSerieGrafico === 'quantidades'}" ng-click="filtrarSeriesGrafico('quantidades')">
                 Quantidades / Volume
               </button>
-              <button class="pill-filter" ng-class="{'active': filtroSerieGrafico === 'faturamento_vs_glosa'}" ng-click="filtrarSeriesGrafico('faturamento_vs_glosa')">
-                Faturamento × Glosa × Recebido
-              </button>
             </div>
 
             <div class="charts-grid" ng-class="{'comparativo': filtrosTop.modoVisao === 'comparativo' && !respostaBackend.modoTodos}">
@@ -666,7 +604,6 @@
                 <button type="button" class="type-btn" ng-class="{'active': filtroSerieTendencia === 'todos'}" ng-click="definirSerieTendencia('todos')">Todos</button>
                 <button type="button" class="type-btn" ng-class="{'active': filtroSerieTendencia === 'financeiro'}" ng-click="definirSerieTendencia('financeiro')">R$</button>
                 <button type="button" class="type-btn" ng-class="{'active': filtroSerieTendencia === 'quantidades'}" ng-click="definirSerieTendencia('quantidades')">Qtd.</button>
-                <button type="button" class="type-btn" ng-class="{'active': filtroSerieTendencia === 'faturamento_vs_glosa'}" ng-click="definirSerieTendencia('faturamento_vs_glosa')">Fat × Glosa × Rec.</button>
               </div>
             </div>
           </div>
@@ -853,7 +790,7 @@
                       </span>
                     </td>
                     <td ng-repeat="col in getColunasVisiveis()" class="text-right">
-                      <span class="cell-num" ng-class="'ind-' + col.key"><span ng-if="col.key === 'taxa_glosa'" class="glosa-dot" ng-class="glosaRateClass(item)"></span>{{ item[col.key + '_fmt'] }}</span>
+                      <span class="cell-num" ng-class="'ind-' + col.key">{{ item[col.key + '_fmt'] }}</span>
                       <div ng-if="filtrosTop.modoVisao === 'comparativo' && item[col.key + '_var'] != null"
                            class="delta-celula"
                            ng-class="classeDelta(item, col)">
@@ -871,7 +808,7 @@
                   <tr>
                     <td>TOTAL ({{ dadosFiltradosTabela.length }})</td>
                     <td ng-repeat="col in getColunasVisiveis()" class="text-right">
-                      <span class="cell-num" ng-class="'ind-' + col.key"><span ng-if="col.key === 'taxa_glosa'" class="glosa-dot" ng-class="glosaRateClass(totaisTabela)"></span>{{ totaisTabela[col.key + '_fmt'] }}</span>
+                      <span class="cell-num" ng-class="'ind-' + col.key">{{ totaisTabela[col.key + '_fmt'] }}</span>
                     </td>
                   </tr>
                 </tfoot>
@@ -904,34 +841,34 @@
 
           <div class="summary-grid" ng-if="respostaBackend.modoTodos">
             <div class="summary-item">
-              <div class="summary-title">Faturamento Total</div>
-              <div class="summary-val-atual" style="color: var(--color-val-faturado);">{{ kpis.faturadoFormatado }}</div>
+              <div class="summary-title">Qtde Atendimentos</div>
+              <div class="summary-val-atual" style="color: var(--color-qtd-contas);">{{ kpis.totalContasFormatado }}</div>
               <div class="summary-val-ant">
-                Anterior: {{ kpis.faturadoAnteriorFormatado }}
-                <strong ng-class="{'text-green': kpis.varFaturado >= 0, 'text-red': kpis.varFaturado < 0}">
-                  ({{ kpis.varFaturado >= 0 ? '+' : '' }}{{ kpis.varFaturado | number:1 }}%)
+                Anterior: {{ kpis.contasAnteriorFormatado }}
+                <strong ng-class="{'text-green': kpis.varContas >= 0, 'text-red': kpis.varContas < 0}">
+                  ({{ kpis.varContas >= 0 ? '+' : '' }}{{ kpis.varContas | number:1 }}%)
                 </strong>
               </div>
             </div>
 
             <div class="summary-item">
-              <div class="summary-title">Glosas Hospitalares</div>
-              <div class="summary-val-atual" style="color: var(--color-val-glosado);">{{ kpis.glosadoFormatado }}</div>
+              <div class="summary-title">Qtde Procedimentos</div>
+              <div class="summary-val-atual" style="color: var(--color-val-produzido);">{{ kpis.procedimentosFormatado }}</div>
               <div class="summary-val-ant">
-                Anterior: {{ kpis.glosadoAnteriorFormatado }}
-                <strong ng-class="{'text-red': kpis.varGlosado > 0, 'text-green': kpis.varGlosado <= 0}">
-                  ({{ kpis.varGlosado >= 0 ? '+' : '' }}{{ kpis.varGlosado | number:1 }}%)
+                Anterior: {{ kpis.procedimentosAnteriorFormatado || '—' }}
+                <strong ng-class="{'text-green': kpis.varProcedimentos >= 0, 'text-red': kpis.varProcedimentos < 0}">
+                  ({{ kpis.varProcedimentos >= 0 ? '+' : '' }}{{ kpis.varProcedimentos | number:1 }}%)
                 </strong>
               </div>
             </div>
 
             <div class="summary-item">
-              <div class="summary-title">Valor Recebido</div>
-              <div class="summary-val-atual" style="color: var(--color-val-recebido);">{{ kpis.recebidoFormatado }}</div>
+              <div class="summary-title">Valor Produzido</div>
+              <div class="summary-val-atual" style="color: var(--color-val-produzido);">{{ kpis.produzidoFormatado }}</div>
               <div class="summary-val-ant">
-                Anterior: {{ kpis.recebidoAnteriorFormatado }}
-                <strong ng-class="{'text-green': kpis.varRecebido >= 0, 'text-red': kpis.varRecebido < 0}">
-                  ({{ kpis.varRecebido >= 0 ? '+' : '' }}{{ kpis.varRecebido | number:1 }}%)
+                Anterior: {{ kpis.produzidoAnteriorFormatado || '—' }}
+                <strong ng-class="{'text-green': kpis.varProduzido >= 0, 'text-red': kpis.varProduzido < 0}">
+                  ({{ kpis.varProduzido >= 0 ? '+' : '' }}{{ kpis.varProduzido | number:1 }}%)
                 </strong>
               </div>
             </div>
@@ -943,17 +880,6 @@
                 Anterior: {{ kpis.medicoAnteriorFormatado }}
                 <strong ng-class="{'text-green': kpis.varMedico >= 0, 'text-red': kpis.varMedico < 0}">
                   ({{ kpis.varMedico >= 0 ? '+' : '' }}{{ kpis.varMedico | number:1 }}%)
-                </strong>
-              </div>
-            </div>
-
-            <div class="summary-item">
-              <div class="summary-title">Volume de Contas</div>
-              <div class="summary-val-atual" style="color: var(--color-qtd-contas);">{{ kpis.totalContasFormatado }}</div>
-              <div class="summary-val-ant">
-                Anterior: {{ kpis.contasAnteriorFormatado }}
-                <strong ng-class="{'text-green': kpis.varContas >= 0, 'text-red': kpis.varContas < 0}">
-                  ({{ kpis.varContas >= 0 ? '+' : '' }}{{ kpis.varContas | number:1 }}%)
                 </strong>
               </div>
             </div>
@@ -1027,17 +953,19 @@
     </div>
     <div class="modal-body">
       <div class="drill-kpis" ng-if="respostaBackend.modoTodos">
-        <div class="drill-kpi"><div class="rot">Qtd. Contas</div><div class="val ind-qtd_contas">{{ drillItem.qtd_contas_fmt }}</div></div>
-        <div class="drill-kpi"><div class="rot">Produzido</div><div class="val ind-valor_produzido">{{ drillItem.valor_produzido_fmt }}</div></div>
-        <div class="drill-kpi"><div class="rot">Faturado</div><div class="val ind-valor_faturado">{{ drillItem.valor_faturado_fmt }}</div></div>
-        <div class="drill-kpi"><div class="rot">Recebido</div><div class="val ind-valor_recebido">{{ drillItem.valor_recebido_fmt }}</div></div>
-        <div class="drill-kpi"><div class="rot">Glosado</div><div class="val ind-valor_glosado">{{ drillItem.valor_glosado_fmt }}</div></div>
-        <div class="drill-kpi"><div class="rot">% Glosa</div><div class="val ind-taxa_glosa">{{ drillItem.taxa_glosa_fmt }}</div></div>
+        <div class="drill-kpi" ng-repeat="col in definicaoColunas"><div class="rot">{{ col.rotulo }}</div><div class="val ind-{{ col.key }}">{{ drillItem[col.key + '_fmt'] }}</div></div>
       </div>
       <div class="drill-kpis" ng-if="!respostaBackend.modoTodos">
         <div class="drill-kpi"><div class="rot">{{ respostaBackend.nomeIndicador }}</div><div class="val ind-{{ config.indicador }}">{{ drillItem.valorFormatado }}</div></div>
         <div class="drill-kpi" ng-if="filtrosTop.modoVisao !== 'normal' && drillItem.valorAnteriorFormatado"><div class="rot">Anterior</div><div class="val cell-num-muted">{{ drillItem.valorAnteriorFormatado }}</div></div>
         <div class="drill-kpi" ng-if="!respostaBackend.isPercentual"><div class="rot">Participação</div><div class="val">{{ calcularParticipacaoPercentual(drillItem.valorRaw) | number:1 }}%</div></div>
+      </div>
+      <div class="drill-kpis" ng-if="drillRanking || drillStats" style="margin-top:6px;">
+        <div class="drill-kpi" ng-if="drillRanking"><div class="rot">Ranking</div><div class="val">{{ drillRanking.posicao }}º de {{ drillRanking.total }}</div></div>
+        <div class="drill-kpi" ng-if="drillStats"><div class="rot">Média Mensal{{ drillStats.rotuloIndicador ? (' · ' + drillStats.rotuloIndicador) : '' }}</div><div class="val">{{ drillStats.mediaFmt }}</div></div>
+        <div class="drill-kpi" ng-if="drillStats"><div class="rot">Melhor Mês</div><div class="val">{{ drillStats.maiorMesLabel }} · {{ drillStats.maiorMesFmt }}</div></div>
+        <div class="drill-kpi" ng-if="drillStats"><div class="rot">Pior Mês</div><div class="val">{{ drillStats.menorMesLabel }} · {{ drillStats.menorMesFmt }}</div></div>
+        <div class="drill-kpi" ng-if="drillStats && drillStats.variacaoPeriodo !== null"><div class="rot">Variação no Período</div><div class="val" ng-class="drillStats.variacaoPeriodo >= 0 ? 'text-green' : 'text-red'">{{ drillStats.variacaoPeriodo | number:1 }}%</div></div>
       </div>
 
       <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; letter-spacing: 0.4px;">
@@ -1065,6 +993,27 @@
      <span>{{ toastMensagem }}</span>
    </div>
 
+</div>
+
+<!-- POPOVER "ORIGEM DOS DADOS" — tabela/campo/filtro extraídos da query -->
+<div class="popover-origem" ng-if="origemAberta" ng-click="$event.stopPropagation()"
+     ng-style="{ top: origemAberta.top + 'px', left: origemAberta.left + 'px' }">
+  <div class="po-cab">
+    <strong>Origem dos dados</strong>
+    <button type="button" class="po-fechar" ng-click="fecharOrigem()" aria-label="Fechar">&#10005;</button>
+  </div>
+  <div class="po-linha" ng-if="origemAberta.tabelas.length">
+    <span class="po-rotulo">Tabela</span>
+    <span class="po-valor po-mono">{{ origemAberta.tabelas.join(', ') }}</span>
+  </div>
+  <div class="po-linha" ng-if="origemAberta.campo">
+    <span class="po-rotulo">Campo</span>
+    <span class="po-valor po-mono">{{ origemAberta.campo }}</span>
+  </div>
+  <div class="po-linha" ng-if="origemAberta.filtro">
+    <span class="po-rotulo">Filtro</span>
+    <span class="po-valor po-mono">{{ origemAberta.filtro }}</span>
+  </div>
 </div>
 
 <!-- ============================================================= -->

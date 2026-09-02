@@ -52,31 +52,33 @@
   };
 
   // CONFIGURAÇÃO DE INDICADORES (formatação, cores, badges)
+  // Cores = mesma sequência categórica validada (CVD-safe) usada em
+  // dashboard.css (--series-1..8), mantendo o gráfico (Chart.js, pintado
+  // via JS) e os badges/KPIs (CSS) sempre consistentes entre si.
   var CONFIG_INDICADORES = {
-    qtd_contas:         { nome: 'Qtd. Atendimentos',    isMoeda: false, isPercentual: false, inverterDelta: false, badgeClass: 'badge-qtd-contas',       color: '#475569' },
-    qtd_procedimentos:  { nome: 'Qtd. Procedimentos',   isMoeda: false, isPercentual: false, inverterDelta: false, badgeClass: 'badge-qtd-proc',          color: '#0284c7' },
-    qtd_atendimentos:   { nome: 'Atendimentos Fisio',   isMoeda: false, isPercentual: false, inverterDelta: false, badgeClass: 'badge-qtd-proc',          color: '#0284c7' },
-    valor_produzido:    { nome: 'Valor Produzido',       isMoeda: true,  isPercentual: false, inverterDelta: false, badgeClass: 'badge-val-produzido',     color: '#d97706' },
-    valor_medico:       { nome: 'Repasse Medico',        isMoeda: true,  isPercentual: false, inverterDelta: false, badgeClass: 'badge-val-medico',        color: '#9333ea' },
-    valor_faturado:     { nome: 'Valor Faturado',        isMoeda: true,  isPercentual: false, inverterDelta: false, badgeClass: 'badge-val-faturado',      color: '#3b82f6' },
-    valor_recebido:     { nome: 'Valor Recebido',        isMoeda: true,  isPercentual: false, inverterDelta: false, badgeClass: 'badge-val-recebido',      color: '#22c55e' },
-    valor_a_receber:    { nome: 'Valor a Receber',       isMoeda: true,  isPercentual: false, inverterDelta: false, badgeClass: 'badge-val-a-receber',     color: '#06b6d4' },
-    valor_glosado:      { nome: 'Valor Glosado',         isMoeda: true,  isPercentual: false, inverterDelta: true,  badgeClass: 'badge-val-glosado',       color: '#ef4444' },
-    valor_glosa_aceita: { nome: 'Glosa Aceita',          isMoeda: true,  isPercentual: false, inverterDelta: true,  badgeClass: 'badge-val-glosa-aceita',  color: '#f87171' },
-    valor_reapresentado:{ nome: 'Reapresentado',         isMoeda: true,  isPercentual: false, inverterDelta: false, badgeClass: 'badge-val-reapresentado', color: '#f59e0b' },
-    valor_adicional:    { nome: 'Valor Adicional',       isMoeda: true,  isPercentual: false, inverterDelta: false, badgeClass: 'badge-val-adicional',     color: '#ec4899' },
-    valor_retorno:      { nome: 'Valor Retorno',         isMoeda: true,  isPercentual: false, inverterDelta: false, badgeClass: 'badge-val-retorno',       color: '#14b8a6' },
-    pct_recebido:       { nome: '% Recebido',            isMoeda: false, isPercentual: true,  inverterDelta: false, badgeClass: 'badge-pct-recebido',      color: '#22c55e' },
-    pct_glosado:        { nome: '% Glosado',             isMoeda: false, isPercentual: true,  inverterDelta: true,  badgeClass: 'badge-pct-glosado',       color: '#ef4444' },
-    pct_glosa_aceita:   { nome: '% Glosa Aceita',        isMoeda: false, isPercentual: true,  inverterDelta: true,  badgeClass: 'badge-pct-glosa-aceita',  color: '#f87171' },
-    pct_adicional:      { nome: '% Adicional',           isMoeda: false, isPercentual: true,  inverterDelta: false, badgeClass: 'badge-pct-adicional',     color: '#a78bfa' },
-    dias_etapa:         { nome: 'Dias em Etapa',         isMoeda: false, isPercentual: false, inverterDelta: true,  badgeClass: 'badge-qtd-contas',        color: '#6366f1' },
-    media_etapa:        { nome: 'Media Etapa (dias)',    isMoeda: false, isPercentual: false, inverterDelta: true,  badgeClass: 'badge-qtd-proc',          color: '#8b5cf6' },
-    vl_conta:           { nome: 'Valor Conta',           isMoeda: true,  isPercentual: false, inverterDelta: false, badgeClass: 'badge-val-produzido',     color: '#f59e0b' },
-    qtd_prescricoes:    { nome: 'Prescricoes',           isMoeda: false, isPercentual: false, inverterDelta: false, badgeClass: 'badge-qtd-contas',        color: '#10b981' },
-    qtd_pacientes:      { nome: 'Pacientes',             isMoeda: false, isPercentual: false, inverterDelta: false, badgeClass: 'badge-qtd-proc',          color: '#0284c7' },
-    qtd_materiais:      { nome: 'Materiais Distintos',   isMoeda: false, isPercentual: false, inverterDelta: false, badgeClass: 'badge-val-produzido',     color: '#7c3aed' },
-    taxa_glosa:         { nome: '% Glosa',               isMoeda: false, isPercentual: true,  inverterDelta: true,  badgeClass: 'badge-glosa-rate',        color: '#ef4444' }
+    qtd_contas:         { nome: 'Qtd. Atendimentos',    isMoeda: false, isPercentual: false, inverterDelta: false, badgeClass: 'badge-qtd-contas',       color: '#2a78d6' },
+    qtd_procedimentos:  { nome: 'Qtd. Procedimentos',   isMoeda: false, isPercentual: false, inverterDelta: false, badgeClass: 'badge-qtd-proc',          color: '#eb6834' },
+    qtd_atendimentos:   { nome: 'Atendimentos Fisio',   isMoeda: false, isPercentual: false, inverterDelta: false, badgeClass: 'badge-qtd-proc',          color: '#eb6834' },
+    valor_produzido:    { nome: 'Valor Produzido',       isMoeda: true,  isPercentual: false, inverterDelta: false, badgeClass: 'badge-val-produzido',     color: '#1baf7a' },
+    valor_medico:       { nome: 'Repasse Medico',        isMoeda: true,  isPercentual: false, inverterDelta: false, badgeClass: 'badge-val-medico',        color: '#eda100' },
+    valor_faturado:     { nome: 'Valor Faturado',        isMoeda: true,  isPercentual: false, inverterDelta: false, badgeClass: 'badge-val-faturado',      color: '#2a78d6' },
+    valor_recebido:     { nome: 'Valor Recebido',        isMoeda: true,  isPercentual: false, inverterDelta: false, badgeClass: 'badge-val-recebido',      color: '#eb6834' },
+    valor_a_receber:    { nome: 'Valor a Receber',       isMoeda: true,  isPercentual: false, inverterDelta: false, badgeClass: 'badge-val-a-receber',     color: '#1baf7a' },
+    valor_glosado:      { nome: 'Valor Glosado',         isMoeda: true,  isPercentual: false, inverterDelta: true,  badgeClass: 'badge-val-glosado',       color: '#eda100' },
+    valor_glosa_aceita: { nome: 'Glosa Aceita',          isMoeda: true,  isPercentual: false, inverterDelta: true,  badgeClass: 'badge-val-glosa-aceita',  color: '#e87ba4' },
+    valor_reapresentado:{ nome: 'Reapresentado',         isMoeda: true,  isPercentual: false, inverterDelta: false, badgeClass: 'badge-val-reapresentado', color: '#008300' },
+    valor_adicional:    { nome: 'Valor Adicional',       isMoeda: true,  isPercentual: false, inverterDelta: false, badgeClass: 'badge-val-adicional',     color: '#4a3aa7' },
+    valor_retorno:      { nome: 'Valor Retorno',         isMoeda: true,  isPercentual: false, inverterDelta: false, badgeClass: 'badge-val-retorno',       color: '#e34948' },
+    pct_recebido:       { nome: '% Recebido',            isMoeda: false, isPercentual: true,  inverterDelta: false, badgeClass: 'badge-pct-recebido',      color: '#f0a479' },
+    pct_glosado:        { nome: '% Glosado',             isMoeda: false, isPercentual: true,  inverterDelta: true,  badgeClass: 'badge-pct-glosado',       color: '#f2c163' },
+    pct_glosa_aceita:   { nome: '% Glosa Aceita',        isMoeda: false, isPercentual: true,  inverterDelta: true,  badgeClass: 'badge-pct-glosa-aceita',  color: '#f0b8cd' },
+    pct_adicional:      { nome: '% Adicional',           isMoeda: false, isPercentual: true,  inverterDelta: false, badgeClass: 'badge-pct-adicional',     color: '#9f8fce' },
+    dias_etapa:         { nome: 'Dias em Etapa',         isMoeda: false, isPercentual: false, inverterDelta: true,  badgeClass: 'badge-dias-etapa',        color: '#eb6834' },
+    media_etapa:        { nome: 'Media Etapa (dias)',    isMoeda: false, isPercentual: false, inverterDelta: true,  badgeClass: 'badge-media-etapa',       color: '#1baf7a' },
+    vl_conta:           { nome: 'Valor Conta',           isMoeda: true,  isPercentual: false, inverterDelta: false, badgeClass: 'badge-vl-conta',          color: '#eda100' },
+    qtd_prescricoes:    { nome: 'Prescricoes',           isMoeda: false, isPercentual: false, inverterDelta: false, badgeClass: 'badge-qtd-contas',        color: '#2a78d6' },
+    qtd_pacientes:      { nome: 'Pacientes',             isMoeda: false, isPercentual: false, inverterDelta: false, badgeClass: 'badge-qtd-proc',          color: '#eb6834' },
+    qtd_materiais:      { nome: 'Materiais Distintos',   isMoeda: false, isPercentual: false, inverterDelta: false, badgeClass: 'badge-val-produzido',     color: '#1baf7a' }
   };
 
   // RÓTULOS DE DIMENSÃO
@@ -136,10 +138,13 @@
       return $http.post(ENDPOINT, adaptarRequisicao(req), { timeout: 120000, headers: headers })
         .then(function (response) { return response.data; },
         function (response) {
+          var status = response && response.status;
           var msg = (response && response.data && response.data.mensagem)
-            ? response.data.mensagem : ('Erro HTTP ' + (response && response.status));
-          if (response && response.status === 401) window.location.href = 'login.html';
-          return $q.reject(new Error(msg));
+            ? response.data.mensagem : ('Erro HTTP ' + status);
+          if (status === 401) window.location.href = 'login.html';
+          var erro = new Error(msg);
+          erro.status = status;
+          return $q.reject(erro);
         });
     }
 

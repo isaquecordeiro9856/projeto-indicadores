@@ -13,25 +13,56 @@
 </head>
 <body ng-controller="LoginController">
   <div class="login-page">
-    <div class="login-card">
+    <div class="login-brand">
+      <div class="brand-mark">TA</div>
       <h1>TASY Analytics</h1>
-      <p class="subtitle">Sistema de Indicadores Hospitalares</p>
+      <p>Indicadores hospitalares em tempo real, direto do TASY — enfermagem, farmácia, centro cirúrgico, financeiro e mais.</p>
+      <div class="brand-features">
+        <div class="feature"><span class="dot">✓</span> Acesso restrito à supervisão e à direção</div>
+        <div class="feature"><span class="dot">✓</span> Dados sempre atualizados do TASY</div>
+        <div class="feature"><span class="dot">✓</span> Exportação e metas configuráveis</div>
+      </div>
+    </div>
 
-      <div class="error-msg" ng-class="{'visible': erro}">{{erro}}</div>
+    <div class="login-panel">
+      <div class="login-card">
+        <div class="login-mobile-mark">TA</div>
+        <h1>Entrar</h1>
+        <p class="subtitle">Acesse com suas credenciais do TASY</p>
 
-      <form ng-submit="fazerLogin()">
-        <div class="form-group">
-          <label for="usuario">Usuário</label>
-          <input type="text" id="usuario" ng-model="nm_usuario" placeholder="Digite seu login" autofocus required>
+        <div class="error-msg" ng-class="{'visible': erro}" role="alert" aria-live="assertive">
+          <span ng-if="erro">⚠</span> {{erro}}
         </div>
-        <div class="form-group">
-          <label for="senha">Senha</label>
-          <input type="password" id="senha" ng-model="ds_senha" placeholder="Digite sua senha" required>
-        </div>
-        <button type="submit" class="btn btn-primary" ng-disabled="carregando || !nm_usuario || !ds_senha">
-          {{carregando ? 'Entrando...' : 'Entrar'}}
-        </button>
-      </form>
+
+        <form ng-submit="fazerLogin()">
+          <div class="form-group">
+            <label for="usuario">Usuário</label>
+            <div class="input-wrap">
+              <span class="input-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              </span>
+              <input type="text" id="usuario" ng-model="nm_usuario" placeholder="Digite seu login" autofocus required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="senha">Senha</label>
+            <div class="input-wrap">
+              <span class="input-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              </span>
+              <input ng-attr-type="{{mostrarSenha ? 'text' : 'password'}}" id="senha" ng-model="ds_senha" placeholder="Digite sua senha" required>
+              <button type="button" class="toggle-senha" ng-click="mostrarSenha = !mostrarSenha" aria-label="Mostrar ou ocultar senha" tabindex="-1">
+                <svg ng-if="!mostrarSenha" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"/><circle cx="12" cy="12" r="3"/></svg>
+                <svg ng-if="mostrarSenha" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a21.6 21.6 0 0 1 5.06-6.06M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a21.6 21.6 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/></svg>
+              </button>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary" ng-disabled="carregando || !nm_usuario || !ds_senha">
+            <span ng-if="carregando" class="spinner"></span>
+            {{carregando ? 'Entrando...' : 'Entrar'}}
+          </button>
+        </form>
+      </div>
     </div>
   </div>
 
@@ -41,6 +72,7 @@
       $scope.ds_senha = '';
       $scope.erro = '';
       $scope.carregando = false;
+      $scope.mostrarSenha = false;
 
       if (AuthService.isLoggedIn()) {
         window.location.href = 'hub.html';

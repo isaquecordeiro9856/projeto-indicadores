@@ -1,0 +1,1247 @@
+/* =============================================================
+   PAINEL GERAL DA DIREÇÃO
+   -------------------------------------------------------------
+   CSS próprio, sem dependência de common.css/dashboard.css (esta
+   página carrega só este arquivo). Prefixo --g-* para não colidir
+   com os tokens dos 6 painéis de domínio.
+   Tema: [data-tema="escuro"] no <html> (o usuário escolhe) ou
+   prefers-color-scheme quando ele deixa em "automático".
+
+   -------------------------------------------------------------
+   CONTRATO JS ↔ CSS — 10 nomes que NÃO podem ser renomeados.
+   Quebrá-los não gera erro no console: a tela só fica errada.
+
+   Lidos por getComputedStyle(document.body) no Chart.js. Precisam
+   guardar LITERAL de cor — nunca var() —, senão getPropertyValue
+   devolve string que o Chart.js não entende:
+     --g-texto-3   → corTexto()  ticks/legenda   js/geral.controller.js
+     --g-border    → corGrade()  grade dos eixos js/geral.controller.js
+     --g-surface   → fundo do PNG exportado      js/geral.controller.js
+
+   Injetados no elemento pela diretiva var-css (usa setProperty
+   porque jqLite ignora custom properties) — js/geral.controller.js:
+     --area-cor  --bloco-cor  --vp-cor  --dim-cor
+     --chip-cor  --serie-cor  --pal-cor
+   ============================================================= */
+
+:root {
+  /* ── Superfícies e bordas ── */
+  --g-bg: #f4f6fb;
+  --g-surface: #ffffff;
+  --g-surface-2: #f8fafc;
+  --g-surface-3: #eef2f9;
+  --g-border: #e2e7f0;
+  --g-border-forte: #cbd4e3;
+
+  /* ── Texto (3 níveis) ──
+     --g-texto-3 passa AA (5,12:1 no branco, 4,56:1 no surface-3).
+     Não clarear: é a cor de rótulo de KPI, header de tabela e dos
+     eixos do gráfico. */
+  --g-texto: #0f172a;
+  --g-texto-2: #47536b;
+  --g-texto-3: #626e87;
+
+  /* ── Marca e semântica ──
+     Os pares -texto existem porque a cor de fill não passa contraste
+     quando usada como texto sobre o próprio fundo translúcido. */
+  --g-primaria: #16324f;
+  --g-primaria-2: #22456b;
+  --g-acento: #0d9488;
+  --g-acento-texto: #0b6d63;
+  --g-positivo: #0f7a57;
+  --g-negativo: #c8323d;
+  --g-alerta: #b7791f;
+  --g-alerta-texto: #8a5808;
+  --g-neutro: #64748b;
+
+  /* ── Superfícies do topo (fundo escuro) ── */
+  --g-topo-fundo: rgba(255, 255, 255, .12);
+  --g-topo-hover: rgba(255, 255, 255, .24);
+  --g-topo-borda: rgba(255, 255, 255, .36);
+  --g-topo-texto-2: rgba(255, 255, 255, .72);
+  --g-topo-av: rgba(255, 255, 255, .16);
+  --g-topo-divisor: rgba(255, 255, 255, .18);
+
+  /* ── Elevação ── */
+  --g-sombra-1: 0 1px 2px rgba(15, 23, 42, .05), 0 2px 8px rgba(15, 23, 42, .04);
+  --g-sombra-2: 0 4px 12px rgba(15, 23, 42, .08), 0 16px 32px -16px rgba(15, 23, 42, .16);
+  --g-foco: 0 0 0 3px color-mix(in srgb, var(--g-acento) 40%, transparent);
+
+  /* ── Raios ── */
+  --g-r-xs: 6px;
+  --g-r-sm: 8px;
+  --g-r-md: 12px;
+  --g-r-lg: 18px;
+  --g-r-pill: 999px;
+  --g-r-circ: 50%;
+
+  /* ── Tipografia ──
+     8 passos, todos com ≥1px e ≥8% de diferença. Peso 800 é
+     reservado a NÚMEROS (.k-valor, tfoot, td.destaque): é o que faz
+     a hierarquia funcionar sem depender só de tamanho. */
+  --g-fs-50: 9.5px;
+  --g-fs-100: 11px;
+  --g-fs-200: 12px;
+  --g-fs-300: 13px;
+  --g-fs-400: 15px;
+  --g-fs-500: 16px;
+  --g-fs-600: 18px;
+  --g-fs-700: 22px;
+  --g-fs-kpi: 24px;
+  --g-fs-kpi-lg: 30px;
+
+  --g-fw-normal: 400;
+  --g-fw-medio: 500;
+  --g-fw-semi: 600;
+  --g-fw-forte: 700;
+  --g-fw-max: 800;
+
+  --g-lh-apertada: 1.15;
+  --g-lh-titulo: 1.25;
+  --g-lh-base: 1.45;
+  --g-lh-solta: 1.6;
+
+  /* ── Espaçamento (base 4, número no nome) ── */
+  --g-e-2: 2px;
+  --g-e-4: 4px;
+  --g-e-6: 6px;
+  --g-e-8: 8px;
+  --g-e-12: 12px;
+  --g-e-16: 16px;
+  --g-e-20: 20px;
+  --g-e-24: 24px;
+  --g-e-32: 32px;
+  --g-e-48: 48px;
+  --g-e-64: 64px;
+
+  /* ── Alturas de controle ── */
+  --g-h-xs: 26px;
+  --g-h-sm: 30px;
+  --g-h-md: 32px;
+  --g-h-lg: 36px;
+  --g-kpi-h: 98px;
+
+  /* ── Transições ── */
+  --g-t-1: 120ms;
+  --g-t-2: 160ms;
+  --g-t-3: 220ms;
+  --g-ease: cubic-bezier(.2, .6, .3, 1);
+
+  /* ── Z-index (escala nomeada; mesmos valores de antes) ── */
+  --g-z-tabela-cel: 2;
+  --g-z-tabela-cab: 3;
+  --g-z-tabela-canto: 4;
+  --g-z-abas: 55;
+  --g-z-topo: 60;
+  --g-z-fundo: 65;
+  --g-z-pop: 70;
+  --g-z-drill: 80;
+  --g-z-modal: 90;
+  --g-z-toast: 95;
+  --g-z-palheta: 200;
+  --g-z-popover: 4000;
+
+  /* ── Layout ──
+     --g-abas é a altura medida de .abas-area: .menu depende dela
+     para o top/height do sticky. Mudou o padding da .aba? Remeça. */
+  --g-topo: 60px;
+  --g-abas: 41px;
+  --g-menu-larg: 258px;
+}
+
+html[data-tema="escuro"] {
+  --g-bg: #0a1120;
+  --g-surface: #111c30;
+  --g-surface-2: #16233a;
+  --g-surface-3: #1d2c46;
+  --g-border: #22314c;
+  --g-border-forte: #33455f;
+  --g-texto: #eef3fa;
+  --g-texto-2: #b9c5d8;
+  --g-texto-3: #8593ab;
+  --g-primaria: #0d1a2c;
+  --g-primaria-2: #16283f;
+  --g-acento: #2dd4bf;
+  --g-acento-texto: #2dd4bf;
+  --g-positivo: #34d399;
+  --g-negativo: #f87171;
+  --g-alerta: #fbbf24;
+  --g-alerta-texto: #fbbf24;
+  --g-sombra-1: 0 1px 2px rgba(0, 0, 0, .3);
+  --g-sombra-2: 0 8px 24px rgba(0, 0, 0, .45);
+}
+
+* { box-sizing: border-box; }
+
+body.geral {
+  margin: 0; background: var(--g-bg); color: var(--g-texto-2);
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: var(--g-fs-300); -webkit-font-smoothing: antialiased;
+}
+
+/* Densidade: re-aponta os tokens em vez de mexer em regra a regra,
+   então "compacta" passa a valer na tela inteira e não só na tabela. */
+body.geral.compacta {
+  --g-fs-300: 12px; --g-fs-200: 11.5px; --g-fs-100: 10.5px;
+  --g-fs-kpi: 20px; --g-fs-kpi-lg: 24px; --g-kpi-h: 78px;
+  --g-e-16: 12px; --g-e-12: 8px; --g-e-24: 16px;
+  --g-h-sm: 26px; --g-h-xs: 24px;
+}
+
+/* Base de foco com especificidade 0 (:where) para nunca disputar com
+   componente. Nenhum seletor deste arquivo pode usar outline:none sem
+   devolver um anel por box-shadow. */
+:where(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--g-acento); outline-offset: 2px;
+}
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+.pular-para {
+  position: absolute; left: var(--g-e-8); top: -60px; z-index: var(--g-z-popover);
+  padding: var(--g-e-8) var(--g-e-16); background: var(--g-acento); color: #fff;
+  border-radius: var(--g-r-sm); font-weight: var(--g-fw-forte); text-decoration: none;
+  transition: top var(--g-t-2) var(--g-ease);
+}
+.pular-para:focus { top: var(--g-e-8); }
+
+/* ── Topo ──────────────────────────────────────────────────── */
+.topo {
+  position: sticky; top: 0; z-index: var(--g-z-topo); height: var(--g-topo);
+  display: flex; align-items: center; gap: var(--g-e-12); padding: 0 var(--g-e-16);
+  background: var(--g-primaria); color: #fff; box-shadow: var(--g-sombra-1);
+}
+.topo .marca { display: flex; align-items: center; gap: var(--g-e-8); min-width: 0; }
+.topo .marca .selo {
+  width: 34px; height: 34px; border-radius: 10px; flex: none;
+  background: linear-gradient(135deg, var(--g-acento), #0f766e);
+  display: grid; place-items: center;
+  font-weight: var(--g-fw-max); font-size: var(--g-fs-300); color: #fff;
+}
+.topo .marca h1 {
+  margin: 0; font-size: var(--g-fs-400); font-weight: var(--g-fw-forte);
+  letter-spacing: -.2px; white-space: nowrap;
+}
+.topo .marca p {
+  margin: 0; font-size: var(--g-fs-100); color: var(--g-topo-texto-2); white-space: nowrap;
+}
+
+.topo .espaco { flex: 1; }
+.topo .grupo-ctrl { display: flex; align-items: center; gap: var(--g-e-6); flex-wrap: wrap; }
+
+/* ── Busca global ──────────────────────────────────────────────
+   Parece campo (é achável para quem procura com os olhos), mas é
+   botão: abre a paleta Ctrl+K, que já é o índice indicador × corte.
+   Sem isso o melhor caminho de navegação ficava escondido atrás de
+   um botão de 28px no canto direito das abas.                    */
+.busca-global {
+  flex: 1 1 240px; max-width: 420px; min-width: 0;
+  display: inline-flex; align-items: center; gap: var(--g-e-8);
+  height: var(--g-h-md); padding: 0 var(--g-e-8) 0 var(--g-e-12);
+  background: var(--g-topo-fundo); color: var(--g-topo-texto-2);
+  border: 1px solid var(--g-topo-borda); border-radius: var(--g-r-sm);
+  font-family: inherit; font-size: var(--g-fs-200); font-weight: var(--g-fw-medio);
+  text-align: left; cursor: pointer;
+  transition: background var(--g-t-2), border-color var(--g-t-2), color var(--g-t-2);
+}
+.busca-global:hover { background: var(--g-topo-hover); color: #fff; }
+.busca-global .lupa { flex: none; font-size: var(--g-fs-300); }
+.busca-global .ph { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.busca-global .atalho { flex: none; display: flex; gap: 3px; }
+.busca-global kbd {
+  background: var(--g-topo-av); border-color: var(--g-topo-borda); color: #fff;
+  font-size: var(--g-fs-50);
+}
+
+.btn-topo {
+  display: inline-flex; align-items: center; gap: var(--g-e-6);
+  height: var(--g-h-md); padding: 0 11px;
+  background: var(--g-topo-fundo); color: #fff; border: 1px solid var(--g-topo-borda);
+  border-radius: var(--g-r-sm); font-family: inherit;
+  font-size: var(--g-fs-200); font-weight: var(--g-fw-semi);
+  cursor: pointer; white-space: nowrap;
+  transition: background var(--g-t-2), border-color var(--g-t-2);
+}
+.btn-topo:hover { background: var(--g-topo-hover); text-decoration: none; color: #fff; }
+.btn-topo.ativo { background: var(--g-acento); border-color: var(--g-acento); }
+.btn-topo.icone { padding: 0 9px; font-size: 14px; }
+
+/* ── Seletor de período (dropdown único: Ano / Mês / Dia) ────── */
+.periodo-trigger { position: relative; }
+.pop-periodo { top: 40px; left: 0; min-width: 300px; }
+
+/* Segmentado. Serve ao seletor de período e ao de tipo de gráfico:
+   4 opções ocupando o espaço de 1, em vez de 4 pílulas enfileiradas. */
+.segmentado {
+  display: flex; gap: var(--g-e-4); padding: 3px;
+  background: var(--g-surface-2); border-radius: var(--g-r-sm);
+}
+.periodo-abas { margin-bottom: var(--g-e-12); }
+.segmentado button {
+  flex: 1; height: 28px; padding: 0 var(--g-e-8);
+  border: none; border-radius: var(--g-r-xs); background: none; cursor: pointer;
+  font-family: inherit; font-size: var(--g-fs-200); font-weight: var(--g-fw-forte);
+  color: var(--g-texto-3); white-space: nowrap;
+  transition: background var(--g-t-2), color var(--g-t-2);
+}
+.segmentado button:hover { color: var(--g-texto); }
+.segmentado button.ativo { background: var(--g-surface); color: var(--g-acento); box-shadow: var(--g-sombra-1); }
+
+.periodo-campo { margin-bottom: var(--g-e-12); }
+.periodo-campo label {
+  display: block; margin-bottom: 5px; font-size: var(--g-fs-100); font-weight: var(--g-fw-forte);
+  color: var(--g-texto-3); text-transform: uppercase; letter-spacing: .4px;
+}
+.periodo-campo .sel, .periodo-campo input[type="date"] { width: 100%; }
+.periodo-campo-dupla { display: grid; grid-template-columns: 1.4fr 1fr; gap: var(--g-e-8); }
+.campo-dia { color-scheme: light; }
+html[data-tema="escuro"] .campo-dia { color-scheme: dark; }
+
+.periodo-atalhos {
+  display: flex; flex-wrap: wrap; gap: var(--g-e-6);
+  padding-top: var(--g-e-8); border-top: 1px solid var(--g-border);
+}
+
+.usuario-topo {
+  display: flex; align-items: center; gap: 9px; padding-left: var(--g-e-6);
+  border-left: 1px solid var(--g-topo-divisor);
+}
+.usuario-topo .av {
+  width: 30px; height: 30px; border-radius: var(--g-r-circ); background: var(--g-topo-av);
+  display: grid; place-items: center; font-weight: var(--g-fw-forte); font-size: var(--g-fs-200);
+}
+.usuario-topo .txt {
+  display: flex; flex-direction: column; line-height: var(--g-lh-titulo); font-size: var(--g-fs-100);
+}
+.usuario-topo .txt b { font-weight: var(--g-fw-forte); }
+.usuario-topo .txt span { color: var(--g-topo-texto-2); font-size: var(--g-fs-50); }
+
+/* ── Abas de área ──────────────────────────────────────────────
+   Primeiro nível de navegação. Com 26 grupos e ~160 dimensões, é o
+   que impede a tela de virar uma lista infinita: cada aba mostra só
+   os KPIs e os cortes daquele assunto. Fica sticky abaixo do topo
+   para não sumir ao rolar a tabela. É um tablist de verdade: roving
+   tabindex, um único stop de Tab, setas navegam.                  */
+.abas-area {
+  position: sticky; top: var(--g-topo); z-index: var(--g-z-abas);
+  display: flex; align-items: stretch; gap: var(--g-e-2); padding: 0 var(--g-e-16);
+  background: var(--g-surface); border-bottom: 1px solid var(--g-border);
+  box-shadow: var(--g-sombra-1); overflow-x: auto; scrollbar-width: none;
+}
+.abas-area::-webkit-scrollbar { display: none; }
+.abas-area .aba {
+  display: inline-flex; align-items: center; gap: 7px; padding: 11px 13px 9px;
+  background: none; border: none; border-bottom: 2.5px solid transparent; cursor: pointer;
+  font-family: inherit; font-size: var(--g-fs-200); font-weight: var(--g-fw-forte);
+  color: var(--g-texto-3); white-space: nowrap;
+  transition: color var(--g-t-2), border-color var(--g-t-2);
+}
+.abas-area .aba:hover { color: var(--g-texto); }
+.abas-area .aba.ativa { color: var(--area-cor, var(--g-acento)); border-bottom-color: var(--area-cor, var(--g-acento)); }
+.abas-area .aba .ic {
+  width: 19px; height: 19px; border-radius: var(--g-r-xs); display: grid; place-items: center;
+  font-size: var(--g-fs-50); color: #fff; background: var(--area-cor, var(--g-acento)); flex: none;
+  opacity: .55; transition: opacity var(--g-t-2);
+}
+.abas-area .aba.ativa .ic { opacity: 1; }
+.abas-area .aba .qtd { font-size: var(--g-fs-50); font-weight: var(--g-fw-forte); color: var(--g-texto-3); }
+.abas-area .espaco-abas { flex: 1; }
+.abas-area .btn-palheta {
+  align-self: center; flex: none; width: 28px; height: 28px; margin-left: var(--g-e-8);
+  display: grid; place-items: center;
+  background: var(--g-surface-2); border: 1px solid var(--g-border);
+  border-radius: var(--g-r-pill); color: var(--g-texto-3); font-size: var(--g-fs-300);
+  cursor: pointer; transition: border-color var(--g-t-2), color var(--g-t-2);
+}
+.abas-area .btn-palheta:hover { border-color: var(--g-acento); color: var(--g-texto); }
+
+/* Faixa de cache: a revalidação leva 30-40s, então não pode ser toast.
+   Fica logo abaixo das abas dizendo que os números são de uma consulta
+   salva — sem isso a pessoa lê dado velho achando que é de agora. */
+.faixa-cache {
+  display: flex; align-items: center; gap: var(--g-e-8);
+  padding: var(--g-e-6) var(--g-e-20);
+  background: color-mix(in srgb, var(--g-acento) 10%, var(--g-surface));
+  border-bottom: 1px solid var(--g-border);
+  font-size: var(--g-fs-100); font-weight: var(--g-fw-semi); color: var(--g-acento-texto);
+}
+.faixa-cache .pulso {
+  width: 7px; height: 7px; border-radius: var(--g-r-circ); flex: none;
+  background: var(--g-acento); animation: pulsar 1.4s infinite ease-in-out;
+}
+@keyframes pulsar { 50% { opacity: .25; } }
+
+.area-cab {
+  display: flex; align-items: baseline; gap: var(--g-e-12); flex-wrap: wrap;
+  margin-bottom: var(--g-e-16);
+}
+.area-cab h2 {
+  margin: 0; font-size: var(--g-fs-700); font-weight: var(--g-fw-forte);
+  color: var(--g-texto); letter-spacing: -.5px; line-height: 1.2;
+}
+.area-cab p { margin: 0; font-size: var(--g-fs-200); font-weight: var(--g-fw-medio); color: var(--g-texto-3); }
+
+/* ── Grade de cortes ("Ver por…", "Por onde começar") ─────────
+   Todos os cortes visíveis de uma vez, agrupados, para a direção
+   escolher clicando em vez de garimpar num menu de 157 itens.    */
+.ver-por { margin-bottom: var(--g-e-24); }
+.ver-por .vp-grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: var(--g-e-12); }
+.ver-por .vp-grupo { margin-bottom: var(--g-e-12); }
+.ver-por .vp-grade .vp-grupo {
+  margin: 0; padding: var(--g-e-12) var(--g-e-16) var(--g-e-16);
+  background: var(--g-surface); border: 1px solid var(--g-border);
+  border-radius: var(--g-r-md); box-shadow: var(--g-sombra-1);
+}
+.ver-por .vp-cab {
+  display: flex; align-items: center; gap: var(--g-e-8); margin-bottom: 7px;
+  font-size: var(--g-fs-100); font-weight: var(--g-fw-forte); letter-spacing: .4px;
+  text-transform: uppercase; color: var(--g-texto-3);
+}
+.ver-por .vp-cab .ic {
+  width: 18px; height: 18px; border-radius: 5px; display: grid; place-items: center;
+  font-size: var(--g-fs-50); color: #fff; background: var(--vp-cor, var(--g-acento)); flex: none;
+}
+.ver-por .vp-cab .qtd { margin-left: auto; font-weight: var(--g-fw-forte); }
+.ver-por .vp-desc {
+  margin: 0 0 var(--g-e-8); font-size: var(--g-fs-200); font-weight: var(--g-fw-medio);
+  color: var(--g-texto-3); line-height: var(--g-lh-base);
+}
+.ver-por .vp-itens { display: flex; flex-wrap: wrap; gap: var(--g-e-6); }
+.ver-por .vp-item .fav { font-size: var(--g-fs-100); color: var(--g-alerta); }
+.ver-por .vp-mais {
+  margin-top: var(--g-e-8); background: none; border: none; padding: 0; cursor: pointer;
+  font-family: inherit; font-size: var(--g-fs-200); font-weight: var(--g-fw-forte);
+  color: var(--vp-cor, var(--g-acento));
+}
+.ver-por .vp-mais:hover { text-decoration: underline; }
+
+/* ── Paleta de comandos (Ctrl+K) ──────────────────────────────
+   A busca do menu só acha pelo nome do CORTE. Esta acha pelo nome
+   do NÚMERO ("valor glosado", "custo por internação"), que é como a
+   direção pensa — e devolve o par indicador × dimensão já pronto.
+   Padrão combobox+listbox: o foco fica no input, a seleção anda por
+   aria-activedescendant.                                          */
+.palheta {
+  position: fixed; z-index: var(--g-z-palheta); left: 50%; top: 12vh; transform: translateX(-50%);
+  width: min(680px, 94vw); max-height: 72vh; display: flex; flex-direction: column;
+  background: var(--g-surface); border: 1px solid var(--g-border-forte);
+  border-radius: var(--g-r-lg); box-shadow: var(--g-sombra-2); overflow: hidden;
+  animation: pal-entra var(--g-t-2) ease-out;
+}
+@keyframes pal-entra { from { transform: translate(-50%, -10px); opacity: 0; } }
+.palheta .pal-campo {
+  display: flex; align-items: center; gap: var(--g-e-8);
+  padding: var(--g-e-12) var(--g-e-16); border-bottom: 1px solid var(--g-border);
+}
+.palheta .pal-campo:focus-within { box-shadow: inset 0 -2px 0 var(--g-acento); }
+.palheta .pal-campo .lupa { font-size: var(--g-fs-400); color: var(--g-texto-3); }
+.palheta .pal-campo input {
+  flex: 1; height: var(--g-h-sm); border: none; background: none; outline: none;
+  font-family: inherit; font-size: var(--g-fs-400); font-weight: var(--g-fw-semi); color: var(--g-texto);
+}
+.palheta .pal-campo input::placeholder { color: var(--g-texto-3); font-weight: var(--g-fw-medio); }
+.palheta .pal-lista { flex: 1; overflow-y: auto; padding: var(--g-e-6); }
+.palheta .pal-item {
+  display: flex; align-items: center; gap: var(--g-e-8); width: 100%;
+  padding: var(--g-e-8) var(--g-e-8) var(--g-e-8) 7px;
+  background: none; border: none; border-radius: var(--g-r-sm); cursor: pointer; text-align: left;
+}
+/* Só mudar o fundo dava 1,08:1 de contraste — a seleção por seta era
+   literalmente invisível. A barra à esquerda é o que a torna legível. */
+.palheta .pal-item.sel { background: var(--g-surface-3); box-shadow: inset 3px 0 0 var(--g-acento); }
+.palheta .pal-item .pt {
+  width: 8px; height: 8px; border-radius: var(--g-r-circ); flex: none;
+  background: var(--pal-cor, var(--g-acento));
+}
+.palheta .pal-item .txt { flex: 1; min-width: 0; }
+.palheta .pal-item .txt b {
+  display: block; font-size: var(--g-fs-300); font-weight: var(--g-fw-forte); color: var(--g-texto);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.palheta .pal-item .txt span {
+  display: block; font-size: var(--g-fs-100); color: var(--g-texto-3);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.palheta .pal-vazio { padding: var(--g-e-16); }
+.palheta .pal-vazio p {
+  margin: 0 0 var(--g-e-8); font-size: var(--g-fs-200); color: var(--g-texto-3);
+  line-height: var(--g-lh-base);
+}
+.palheta .pal-rodape {
+  display: flex; align-items: center; gap: var(--g-e-12); flex-wrap: wrap;
+  padding: var(--g-e-8) var(--g-e-16); border-top: 1px solid var(--g-border);
+  background: var(--g-surface-2); font-size: var(--g-fs-50); color: var(--g-texto-3);
+}
+.palheta .pal-rodape .contagem { margin-left: auto; font-weight: var(--g-fw-forte); }
+
+/* ── Layout ────────────────────────────────────────────────── */
+.corpo { display: grid; grid-template-columns: var(--g-menu-larg) minmax(0, 1fr); align-items: start; }
+.corpo.sem-menu { grid-template-columns: 0 minmax(0, 1fr); }
+.corpo.sem-menu .menu { display: none; }
+
+/* ── Menu lateral ──────────────────────────────────────────── */
+.menu {
+  position: sticky; top: calc(var(--g-topo) + var(--g-abas));
+  height: calc(100vh - var(--g-topo) - var(--g-abas));
+  display: flex; flex-direction: column; background: var(--g-surface);
+  border-right: 1px solid var(--g-border); overflow: hidden;
+}
+
+.menu-ctx {
+  display: flex; align-items: center; gap: var(--g-e-6);
+  padding: var(--g-e-12) var(--g-e-12) 0;
+  font-size: var(--g-fs-100); font-weight: var(--g-fw-forte);
+  text-transform: uppercase; letter-spacing: .4px; color: var(--g-texto-3);
+}
+.menu-ctx .pt {
+  width: 8px; height: 8px; border-radius: var(--g-r-circ); flex: none;
+  background: var(--area-cor, var(--g-acento));
+}
+.menu-ctx .nome { color: var(--g-texto); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.menu-ctx .acoes { margin-left: auto; display: flex; gap: var(--g-e-2); }
+.menu-ctx .acoes button {
+  width: 22px; height: 22px; display: grid; place-items: center;
+  background: none; border: none; border-radius: var(--g-r-xs); cursor: pointer;
+  color: var(--g-texto-3); font-size: var(--g-fs-200);
+}
+.menu-ctx .acoes button:hover { background: var(--g-surface-2); color: var(--g-texto); }
+
+.menu-busca { padding: var(--g-e-8) var(--g-e-12); border-bottom: 1px solid var(--g-border); }
+.menu-busca input {
+  width: 100%; height: var(--g-h-md); padding: 0 var(--g-e-8); font-family: inherit;
+  font-size: var(--g-fs-200); background: var(--g-surface-2); color: var(--g-texto);
+  border: 1px solid var(--g-border); border-radius: var(--g-r-sm);
+}
+.menu-busca input:focus-visible { border-color: var(--g-acento); box-shadow: var(--g-foco); outline: none; }
+/* O escopo da busca ("nesta área" × "todas") era invisível: só se
+   descobria digitando e vendo grupos de outras áreas aparecerem. */
+.menu-escopo { margin-top: var(--g-e-6); }
+.menu-escopo button { height: var(--g-h-xs); font-size: var(--g-fs-100); }
+
+.menu-lista { flex: 1; overflow-y: auto; padding: var(--g-e-8); }
+.menu-lista::-webkit-scrollbar { width: 8px; }
+.menu-lista::-webkit-scrollbar-thumb { background: var(--g-border-forte); border-radius: var(--g-e-4); }
+
+/* Nível de ÁREA: existe só na Visão Geral e na busca global. Sem ele,
+   a aba mais simples do painel despejava os 157 cortes de uma vez. */
+.m-area { margin-bottom: var(--g-e-6); }
+.m-area > .cab {
+  display: flex; align-items: center; gap: var(--g-e-8); width: 100%; padding: var(--g-e-8);
+  background: var(--g-surface-2); border: none; border-radius: var(--g-r-sm); cursor: pointer;
+  font-family: inherit; font-size: var(--g-fs-100); font-weight: var(--g-fw-forte);
+  letter-spacing: .4px; text-transform: uppercase; color: var(--g-texto-2); text-align: left;
+}
+.m-area > .cab:hover { background: var(--g-surface-3); color: var(--g-texto); }
+.m-area > .cab .ic {
+  width: 18px; height: 18px; border-radius: 5px; display: grid; place-items: center;
+  font-size: var(--g-fs-50); color: #fff; background: var(--area-cor, var(--g-acento)); flex: none;
+}
+.m-area > .cab .nome { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.m-area > .cab .qtd { font-size: var(--g-fs-50); font-weight: var(--g-fw-forte); color: var(--g-texto-3); }
+.m-area > .cab .seta { font-size: var(--g-fs-50); transition: transform var(--g-t-3); }
+.m-area.fechada > .cab .seta { transform: rotate(-90deg); }
+.m-area.fechada .m-area-corpo { display: none; }
+.m-area-corpo { padding-left: var(--g-e-6); }
+
+.g-grupo { margin-bottom: var(--g-e-4); }
+.g-grupo > .cab {
+  display: flex; align-items: center; gap: var(--g-e-8); width: 100%; padding: 7px var(--g-e-8);
+  background: none; border: none; cursor: pointer; border-radius: var(--g-r-sm);
+  font-family: inherit; font-size: var(--g-fs-100); font-weight: var(--g-fw-forte);
+  letter-spacing: .4px; text-transform: uppercase; color: var(--g-texto-3); text-align: left;
+}
+.g-grupo > .cab:hover { background: var(--g-surface-2); color: var(--g-texto); }
+.g-grupo > .cab .ic {
+  width: 20px; height: 20px; border-radius: var(--g-r-xs); display: grid; place-items: center;
+  font-size: var(--g-fs-100); color: #fff; flex: none;
+}
+.g-grupo > .cab .nome { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.g-grupo > .cab .marcas { display: flex; gap: 3px; flex: none; }
+.g-grupo > .cab .qtd { font-size: var(--g-fs-50); font-weight: var(--g-fw-forte); color: var(--g-texto-3); }
+.g-grupo > .cab .seta { font-size: var(--g-fs-50); transition: transform var(--g-t-3); }
+.g-grupo.fechado > .cab .seta { transform: rotate(-90deg); }
+.g-grupo.fechado .g-itens { display: none; }
+
+.g-itens { padding: var(--g-e-2) 0 var(--g-e-6) var(--g-e-8); }
+.g-item {
+  display: flex; align-items: center; gap: var(--g-e-6); width: 100%; padding: var(--g-e-6) 9px;
+  background: none; border: none; border-left: 2px solid transparent; cursor: pointer;
+  font-family: inherit; font-size: var(--g-fs-200); font-weight: var(--g-fw-medio);
+  color: var(--g-texto-2); text-align: left;
+  border-radius: 0 var(--g-r-sm) var(--g-r-sm) 0;
+  transition: background var(--g-t-1), color var(--g-t-1);
+}
+.g-item:hover { background: var(--g-surface-2); color: var(--g-texto); }
+.g-item.ativo {
+  background: var(--g-surface-3); color: var(--g-texto);
+  font-weight: var(--g-fw-forte); border-left-color: var(--g-acento);
+}
+.g-item .nome { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.g-item .fav {
+  opacity: 0; font-size: var(--g-fs-200); color: var(--g-texto-3);
+  background: none; border: none; cursor: pointer; padding: 0 var(--g-e-2);
+}
+/* Sem isto a estrela é inalcançável por teclado: opacity:0 até o hover. */
+.g-item:hover .fav, .g-item .fav.on, .g-item .fav:focus-visible { opacity: 1; }
+.g-item .fav.on { color: var(--g-alerta); }
+
+.menu-rodape {
+  padding: var(--g-e-8) var(--g-e-12); border-top: 1px solid var(--g-border);
+  font-size: var(--g-fs-100); color: var(--g-texto-3);
+  display: flex; justify-content: space-between; gap: var(--g-e-8);
+}
+
+/* ── Conteúdo ──────────────────────────────────────────────── */
+.conteudo { padding: var(--g-e-20) var(--g-e-20) var(--g-e-64); min-width: 0; }
+
+.secao { margin-bottom: var(--g-e-24); }
+.secao-cab {
+  display: flex; align-items: baseline; gap: var(--g-e-12); flex-wrap: wrap;
+  margin-bottom: var(--g-e-12);
+}
+.secao-cab h2 {
+  margin: 0; font-size: var(--g-fs-500); font-weight: var(--g-fw-forte);
+  color: var(--g-texto); letter-spacing: -.2px;
+}
+.secao-cab p { margin: 0; font-size: var(--g-fs-200); font-weight: var(--g-fw-medio); color: var(--g-texto-3); }
+.secao-cab .acoes { margin-left: auto; display: flex; gap: var(--g-e-6); flex-wrap: wrap; }
+
+.cartao {
+  background: var(--g-surface); border: 1px solid var(--g-border);
+  border-radius: var(--g-r-md); box-shadow: var(--g-sombra-1);
+}
+
+/* ── Botões e pílulas ──────────────────────────────────────────
+   Uma base só para as 6 famílias que antes repetiam as mesmas 8
+   declarações. As classes seguem separadas porque o HTML e os
+   var-css de cor ativa (--chip-cor, --vp-cor, --serie-cor…) já as
+   distinguem — ver o contrato JS↔CSS no topo do arquivo.         */
+.btn, .chip, .chip-periodo, .ver-por .vp-item, .legenda button {
+  display: inline-flex; align-items: center; gap: var(--g-e-6);
+  height: var(--g-h-sm); padding: 0 var(--g-e-12);
+  background: var(--g-surface); color: var(--g-texto-2); border: 1px solid var(--g-border);
+  border-radius: var(--g-r-sm); font-family: inherit;
+  font-size: var(--g-fs-200); font-weight: var(--g-fw-semi);
+  white-space: nowrap; cursor: pointer;
+  transition: background var(--g-t-2), border-color var(--g-t-2), color var(--g-t-2);
+}
+.chip, .chip-periodo, .ver-por .vp-item, .legenda button {
+  height: var(--g-h-xs); padding: 0 11px; border-radius: var(--g-r-pill);
+}
+.chip, .chip-periodo, .legenda button { background: var(--g-surface-2); }
+.btn:hover, .chip-periodo:hover, .legenda button:hover { border-color: var(--g-border-forte); color: var(--g-texto); }
+.btn:hover { border-color: var(--g-acento); }
+.chip:hover { border-color: var(--chip-cor, var(--g-acento)); color: var(--g-texto); }
+.ver-por .vp-item:hover { border-color: var(--vp-cor, var(--g-acento)); color: var(--g-texto); }
+.btn.ativo { background: var(--g-acento); border-color: var(--g-acento); color: #fff; }
+.chip-periodo.ativo { background: var(--g-acento); border-color: var(--g-acento); color: #fff; }
+.chip.ativo { background: var(--chip-cor, var(--g-acento)); border-color: var(--chip-cor, var(--g-acento)); color: #fff; }
+.ver-por .vp-item.ativo { background: var(--vp-cor, var(--g-acento)); border-color: var(--vp-cor, var(--g-acento)); color: #fff; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn.pequeno { height: var(--g-h-xs); padding: 0 var(--g-e-8); font-size: var(--g-fs-100); }
+.btn.icone-so { width: var(--g-h-xs); padding: 0; justify-content: center; font-size: var(--g-fs-300); }
+.chip .pt, .legenda button .pt { width: 7px; height: 7px; border-radius: var(--g-r-circ); flex: none; }
+.chip .pt { background: var(--chip-cor, var(--g-acento)); }
+.legenda button .pt { background: var(--serie-cor, var(--g-acento)); }
+.chip.ativo .pt { background: rgba(255, 255, 255, .9); }
+.legenda button.off { opacity: .42; }
+
+/* Selo pequeno: "⏱ lenta", "×2 composta", contadores. Uma definição só. */
+.tag {
+  flex: none; font-size: var(--g-fs-50); font-weight: var(--g-fw-forte);
+  padding: 1px 5px; border-radius: var(--g-r-xs);
+  background: var(--g-surface-3); color: var(--g-texto-3);
+}
+.tag.lenta { background: color-mix(in srgb, var(--g-alerta) 16%, transparent); color: var(--g-alerta-texto); }
+
+.sel {
+  height: var(--g-h-sm); padding: 0 var(--g-e-24) 0 9px; font-family: inherit;
+  font-size: var(--g-fs-200); font-weight: var(--g-fw-semi);
+  background: var(--g-surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2347536b' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right var(--g-e-8) center;
+  color: var(--g-texto-2);
+  border: 1px solid var(--g-border); border-radius: var(--g-r-sm);
+  -webkit-appearance: none; -moz-appearance: none; appearance: none;
+  cursor: pointer; transition: border-color var(--g-t-2);
+}
+.sel:hover { border-color: var(--g-border-forte); }
+.sel:focus-visible { border-color: var(--g-acento); }
+.sel option { background: var(--g-surface); color: var(--g-texto); }
+html[data-tema="escuro"] .sel {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23b9c5d8' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+/* ── Blocos de KPI ─────────────────────────────────────────── */
+.blocos { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: var(--g-e-16); }
+.bloco { padding: var(--g-e-16); position: relative; overflow: hidden; }
+.bloco::before { content: ''; position: absolute; inset: 0 auto 0 0; width: 3px; background: var(--bloco-cor, var(--g-acento)); }
+.bloco .b-cab { display: flex; align-items: center; gap: var(--g-e-8); margin-bottom: var(--g-e-12); }
+.bloco .b-cab .ic {
+  width: 24px; height: 24px; border-radius: 7px; display: grid; place-items: center;
+  font-size: var(--g-fs-100); color: #fff; background: var(--bloco-cor, var(--g-acento)); flex: none;
+}
+.bloco .b-cab h3 {
+  margin: 0; font-size: var(--g-fs-300); font-weight: var(--g-fw-forte); color: var(--g-texto);
+}
+.bloco .b-cab .tag { margin-left: var(--g-e-2); }
+.bloco .b-cab .ic-info, .bloco .b-cab .btn { margin-left: auto; }
+.bloco .b-cab .ic-info + .btn { margin-left: 0; }
+
+.ic-info {
+  cursor: pointer; color: var(--g-texto-3); font-size: var(--g-fs-100); opacity: .85;
+  background: var(--g-surface-3); border: 1px solid var(--g-border); border-radius: var(--g-r-circ);
+  width: 16px; height: 16px; line-height: 14px; text-align: center; padding: 0;
+  font-family: inherit; flex-shrink: 0;
+  transition: color var(--g-t-2), background var(--g-t-2), border-color var(--g-t-2);
+}
+.ic-info:hover, .ic-info:focus-visible { opacity: 1; color: #fff; background: var(--g-acento); border-color: var(--g-acento); }
+
+/* Popover "origem dos dados" — tabela/campo/filtro extraídos da query */
+.popover-origem {
+  position: fixed; z-index: var(--g-z-popover); width: 320px; max-width: calc(100vw - 24px);
+  background: var(--g-surface); border: 1px solid var(--g-border-forte); border-radius: var(--g-r-md);
+  box-shadow: var(--g-sombra-2); padding: var(--g-e-12) var(--g-e-16);
+  font-size: var(--g-fs-300); color: var(--g-texto-2);
+}
+.popover-origem .po-cab { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--g-e-8); }
+.popover-origem .po-cab strong { font-size: var(--g-fs-200); color: var(--g-texto); }
+.popover-origem .po-fechar {
+  cursor: pointer; border: none; background: transparent; color: var(--g-texto-3);
+  font-size: var(--g-fs-300); line-height: 1; padding: var(--g-e-2) var(--g-e-4); border-radius: var(--g-e-4);
+}
+.popover-origem .po-fechar:hover { color: var(--g-texto); background: var(--g-surface-3); }
+.popover-origem .po-linha { margin-bottom: 7px; }
+.popover-origem .po-linha:last-child { margin-bottom: 0; }
+.popover-origem .po-rotulo {
+  display: block; font-size: var(--g-fs-50); font-weight: var(--g-fw-forte); text-transform: uppercase;
+  letter-spacing: .4px; color: var(--g-texto-3); margin-bottom: var(--g-e-2);
+}
+.popover-origem .po-valor { display: block; color: var(--g-texto-2); word-break: break-word; }
+.popover-origem .po-desc { line-height: var(--g-lh-base); }
+.popover-origem .po-mono {
+  font-family: 'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: var(--g-fs-100); background: var(--g-surface-3); border-radius: var(--g-r-xs);
+  padding: var(--g-e-4) var(--g-e-6); line-height: var(--g-lh-base);
+}
+
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(148px, 1fr)); gap: var(--g-e-8); }
+.kpi {
+  padding: 9px 10px; border-radius: var(--g-r-sm); min-height: var(--g-kpi-h);
+  display: flex; flex-direction: column;
+  background: var(--g-surface-2); border: 1px solid var(--g-border);
+  border-left: 3px solid transparent;
+}
+/* O 1º indicador de cada bloco é o principal (definido no backend):
+   ocupa a linha inteira e ganha o corpo maior. É o que transforma
+   "41 números iguais" em "8 grandes + 33 de apoio". */
+.kpis .kpi:first-child { grid-column: 1 / -1; }
+.kpis .kpi:first-child .k-valor { font-size: var(--g-fs-kpi-lg); }
+/* Cauda: do 5º em diante o KPI vira par nome/valor sem caixa. Nada
+   some da tela — só para de disputar atenção com o que importa. */
+.kpis .kpi:nth-child(n + 5) {
+  min-height: 0; padding: var(--g-e-4) 0;
+  background: none; border: none; border-radius: 0;
+}
+.kpis .kpi:nth-child(n + 5) .k-valor { font-size: var(--g-fs-600); }
+
+.kpi .k-nome-row { display: flex; align-items: flex-start; gap: var(--g-e-4); margin-bottom: 3px; }
+/* Duas linhas com min-height fixo: com 1 linha em um card e 2 no
+   vizinho, os valores desalinham e a varredura vertical morre. */
+.kpi .k-nome {
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  min-height: calc(2 * var(--g-lh-titulo) * var(--g-fs-100));
+  font-size: var(--g-fs-100); font-weight: var(--g-fw-semi); color: var(--g-texto-3);
+  line-height: var(--g-lh-titulo); min-width: 0; flex: 1; overflow: hidden;
+}
+.kpis .kpi:nth-child(n + 5) .k-nome { -webkit-line-clamp: 1; min-height: 0; }
+.kpi .k-valor {
+  display: block; margin-top: auto; font-size: var(--g-fs-kpi); font-weight: var(--g-fw-max);
+  color: var(--g-texto); letter-spacing: -.5px; line-height: var(--g-lh-apertada);
+  font-variant-numeric: tabular-nums; word-break: break-word;
+}
+.kpi .k-delta {
+  display: flex; align-items: baseline; flex-wrap: wrap; column-gap: var(--g-e-6);
+  min-width: 0; margin-top: var(--g-e-4);
+  font-size: var(--g-fs-100); font-weight: var(--g-fw-forte);
+}
+.kpi .k-delta .anterior {
+  font-weight: var(--g-fw-medio); color: var(--g-texto-3);
+  min-width: 0; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* Sinal de atenção. Um canal por card, com prioridade meta > delta:
+   marcar tudo é o mesmo que não marcar nada. */
+.kpi.delta-ruim { border-left-color: var(--g-negativo); }
+.kpi.meta-ok .k-valor::before, .kpi.meta-falha .k-valor::before {
+  content: ''; display: inline-block; width: 6px; height: 6px; margin-right: var(--g-e-6);
+  border-radius: var(--g-r-circ); vertical-align: middle;
+}
+.kpi.meta-ok .k-valor::before { background: var(--g-positivo); }
+.kpi.meta-falha .k-valor::before { background: var(--g-negativo); }
+.kpi.meta-ok, .kpi.meta-falha { border-left-color: transparent; }
+
+.delta-bom { color: var(--g-positivo); }
+.delta-ruim { color: var(--g-negativo); }
+.delta-neutro { color: var(--g-neutro); }
+
+.esqueleto {
+  position: relative; overflow: hidden; background: var(--g-surface-2);
+  border-radius: 5px; color: transparent !important;
+}
+.esqueleto::after {
+  content: ''; position: absolute; inset: 0; transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(125, 145, 180, .18), transparent);
+  animation: brilho 1.15s infinite;
+}
+@keyframes brilho { to { transform: translateX(100%); } }
+
+/* ── Gráficos ──────────────────────────────────────────────── */
+.grafico-cartao { padding: var(--g-e-12) var(--g-e-16) var(--g-e-8); }
+.grafico-caixa { position: relative; height: 320px; }
+.grafico-caixa.alta { height: 420px; }
+.grafico-caixa.baixa { height: 240px; }
+
+/* Título do gráfico: é a ligação mais barata entre o chip de
+   indicador, a coluna destacada da tabela e a série desenhada. */
+.grafico-titulo {
+  display: flex; align-items: center; gap: var(--g-e-8); margin-bottom: var(--g-e-8);
+  font-size: var(--g-fs-200); font-weight: var(--g-fw-forte); color: var(--g-texto);
+}
+.grafico-titulo .pt {
+  width: 9px; height: 9px; border-radius: var(--g-r-circ); flex: none;
+  background: var(--dim-cor, var(--g-acento));
+}
+.grafico-titulo .periodo { font-weight: var(--g-fw-medio); color: var(--g-texto-3); }
+
+.legenda { display: flex; flex-wrap: wrap; gap: var(--g-e-6); margin-bottom: var(--g-e-8); }
+
+/* ── Explorador ────────────────────────────────────────────── */
+.barra-dim { padding: var(--g-e-12) var(--g-e-16); margin-bottom: var(--g-e-12); }
+.dim-titulo { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; margin-bottom: var(--g-e-8); }
+.dim-titulo .ic {
+  width: 26px; height: 26px; border-radius: var(--g-r-sm); display: grid; place-items: center;
+  font-size: var(--g-fs-200); color: #fff; background: var(--dim-cor, var(--g-acento)); flex: none;
+}
+.dim-titulo h2 {
+  margin: 0; font-size: var(--g-fs-600); font-weight: var(--g-fw-forte);
+  color: var(--g-texto); letter-spacing: -.3px;
+}
+.dim-titulo .meta { font-size: var(--g-fs-200); font-weight: var(--g-fw-medio); color: var(--g-texto-3); }
+.dim-titulo .avisos { margin-left: auto; display: flex; gap: var(--g-e-6); flex-wrap: wrap; }
+.aviso {
+  display: inline-flex; align-items: center; gap: 5px; padding: 3px var(--g-e-8);
+  border-radius: var(--g-r-pill); font-size: var(--g-fs-100); font-weight: var(--g-fw-forte);
+  background: color-mix(in srgb, var(--g-alerta) 14%, transparent);
+  color: var(--g-alerta-texto);
+  border: 1px solid color-mix(in srgb, var(--g-alerta) 32%, transparent);
+}
+.aviso.info {
+  background: color-mix(in srgb, var(--g-acento) 12%, transparent);
+  color: var(--g-acento-texto);
+  border-color: color-mix(in srgb, var(--g-acento) 30%, transparent);
+}
+/* Quando o corte novo não tem o indicador pedido, o servidor devolve
+   outro. Antes isso acontecia em silêncio e parecia bug. */
+.aviso-troca {
+  display: block; width: 100%; margin-top: var(--g-e-8);
+  padding: var(--g-e-6) var(--g-e-8); border-radius: var(--g-r-sm);
+  background: color-mix(in srgb, var(--g-alerta) 12%, transparent);
+  font-size: var(--g-fs-100); font-weight: var(--g-fw-semi); color: var(--g-alerta-texto);
+}
+
+/* ── Indicador em foco ─────────────────────────────────────── */
+.linha-indicadores { margin-top: var(--g-e-8); }
+.linha-indicadores .rot {
+  display: block; margin-bottom: var(--g-e-6);
+  font-size: var(--g-fs-100); font-weight: var(--g-fw-forte); color: var(--g-texto-3);
+  text-transform: uppercase; letter-spacing: .4px;
+}
+.chips { display: flex; flex-wrap: wrap; gap: var(--g-e-6); }
+.chip .dir { font-size: var(--g-fs-50); opacity: .8; }
+.chips-dica {
+  margin: var(--g-e-6) 0 0; font-size: var(--g-fs-100); color: var(--g-texto-3);
+  line-height: var(--g-lh-base);
+}
+
+/* ── Barra de ferramentas ──────────────────────────────────────
+   Antes: 13 controles do mesmo peso numa faixa de 26px, misturando
+   visualização, dados e saída. Agora: 3 zonas separadas por espaço
+   (não por régua de 1px, que não aparece) + overflow.             */
+.ferramentas {
+  display: flex; align-items: center; gap: var(--g-e-16); flex-wrap: wrap;
+  margin-top: var(--g-e-12); padding-top: var(--g-e-12); border-top: 1px solid var(--g-border);
+}
+.fer-grupo { display: flex; align-items: center; gap: var(--g-e-4); min-width: 0; }
+.fer-grupo.dados { flex: 1 1 320px; }
+.fer-grupo.saida { margin-left: auto; position: relative; }
+.tipo-grafico { flex: none; }
+.tipo-grafico button { flex: none; width: 30px; padding: 0; font-size: var(--g-fs-300); }
+
+.busca-tabela { position: relative; flex: 1 1 170px; max-width: 260px; min-width: 130px; }
+.busca-tabela input {
+  width: 100%; height: var(--g-h-sm); padding: 0 var(--g-e-24) 0 9px;
+  font-family: inherit; font-size: var(--g-fs-200);
+  background: var(--g-surface-2); color: var(--g-texto);
+  border: 1px solid var(--g-border); border-radius: var(--g-r-sm);
+}
+.busca-tabela input:focus-visible { border-color: var(--g-acento); box-shadow: var(--g-foco); outline: none; }
+.busca-tabela .limpar {
+  position: absolute; right: var(--g-e-4); top: 50%; transform: translateY(-50%);
+  background: none; border: none; color: var(--g-texto-3); cursor: pointer;
+  font-size: 14px; line-height: 1;
+}
+.btn[aria-pressed="true"] { background: var(--g-acento); border-color: var(--g-acento); color: #fff; }
+
+/* ── Tabela ────────────────────────────────────────────────── */
+.tabela-cartao { overflow: hidden; }
+.tabela-rolagem { overflow: auto; max-height: 640px; }
+table.tg { width: 100%; border-collapse: separate; border-spacing: 0; font-size: var(--g-fs-200); }
+
+table.tg thead th {
+  position: sticky; top: 0; z-index: var(--g-z-tabela-cab); background: var(--g-surface);
+  padding: 9px 11px; text-align: right; white-space: nowrap; cursor: pointer;
+  font-size: var(--g-fs-100); font-weight: var(--g-fw-forte); letter-spacing: .4px;
+  text-transform: uppercase; color: var(--g-texto-3);
+  border-bottom: 1px solid var(--g-border-forte);
+  transition: color var(--g-t-2), background-color var(--g-t-2);
+}
+table.tg thead th:hover { color: var(--g-texto); }
+table.tg thead th.rotulo { text-align: left; left: 0; z-index: var(--g-z-tabela-canto); min-width: 210px; }
+table.tg thead th.ativa { color: var(--g-acento); background: var(--g-surface-2); }
+table.tg thead th .pt {
+  display: inline-block; width: 7px; height: 7px; border-radius: var(--g-r-circ);
+  margin-right: 5px; vertical-align: middle; background: var(--dim-cor, var(--g-acento));
+}
+table.tg thead th .ord {
+  display: inline-block; width: 9px; margin-left: 3px; font-size: var(--g-fs-50);
+  text-align: center; vertical-align: middle;
+}
+
+table.tg tbody td {
+  padding: 7px 11px; text-align: right; white-space: nowrap; color: var(--g-texto-2);
+  border-bottom: 1px solid var(--g-border); font-variant-numeric: tabular-nums;
+  vertical-align: middle;
+}
+body.geral.compacta table.tg tbody td { padding: var(--g-e-4) 9px; }
+table.tg tbody td.rotulo {
+  text-align: left; position: sticky; left: 0; z-index: var(--g-z-tabela-cel); background: var(--g-surface);
+  color: var(--g-texto); font-weight: var(--g-fw-semi); white-space: normal;
+  min-width: 210px; max-width: 360px;
+}
+table.tg tbody tr:hover td { background: var(--g-surface-2); }
+table.tg tbody tr:hover td.rotulo { background: var(--g-surface-3); }
+table.tg tbody tr.anomala td.rotulo { box-shadow: inset 3px 0 0 var(--g-alerta); }
+table.tg td.destaque { font-weight: var(--g-fw-max); color: var(--g-texto); }
+table.tg td.meta-ok { color: var(--g-positivo); font-weight: var(--g-fw-forte); }
+table.tg td.meta-falha { color: var(--g-negativo); font-weight: var(--g-fw-forte); }
+
+.cel-rotulo { display: flex; align-items: center; gap: 7px; }
+.cel-rotulo .pos {
+  flex: none; width: 20px; height: 20px; border-radius: var(--g-r-xs); display: grid; place-items: center;
+  font-size: var(--g-fs-50); font-weight: var(--g-fw-max);
+  background: var(--g-surface-3); color: var(--g-texto-3);
+}
+.cel-rotulo .txt { flex: 1; min-width: 0; }
+.cel-rotulo .lupa {
+  flex: none; opacity: 0; background: none; border: none; cursor: pointer;
+  color: var(--g-texto-3); font-size: var(--g-fs-200); padding: var(--g-e-2) var(--g-e-4);
+  border-radius: 5px;
+}
+table.tg tbody tr:hover .cel-rotulo .lupa, .cel-rotulo .lupa:focus-visible { opacity: 1; }
+.cel-rotulo .lupa:hover { background: var(--g-surface-3); color: var(--g-acento); }
+
+.barra-part {
+  position: relative; display: block; height: 3px; margin-top: var(--g-e-4);
+  background: var(--g-surface-3); border-radius: 2px; overflow: hidden;
+}
+.barra-part i { position: absolute; inset: 0 auto 0 0; background: var(--dim-cor, var(--g-acento)); border-radius: 2px; }
+
+.var-chip {
+  display: inline-block; margin-left: var(--g-e-6); font-size: var(--g-fs-100);
+  font-weight: var(--g-fw-forte); vertical-align: middle; white-space: nowrap;
+}
+
+table.tg tfoot td {
+  position: sticky; bottom: 0; z-index: var(--g-z-tabela-cab); background: var(--g-surface-3);
+  padding: 9px 11px; text-align: right; white-space: nowrap;
+  font-weight: var(--g-fw-max); color: var(--g-texto); border-top: 2px solid var(--g-border-forte);
+}
+table.tg tfoot td.rotulo { text-align: left; left: 0; z-index: var(--g-z-tabela-canto); }
+
+.tabela-rodape {
+  display: flex; justify-content: space-between; align-items: center; gap: var(--g-e-12); flex-wrap: wrap;
+  padding: 9px var(--g-e-12); font-size: var(--g-fs-100); color: var(--g-texto-3);
+  border-top: 1px solid var(--g-border); background: var(--g-surface-2);
+}
+
+/* ── Painéis flutuantes ────────────────────────────────────── */
+.pop {
+  position: absolute; z-index: var(--g-z-pop); min-width: 240px; max-width: 340px; padding: var(--g-e-12);
+  background: var(--g-surface); border: 1px solid var(--g-border-forte);
+  border-radius: var(--g-r-md); box-shadow: var(--g-sombra-2);
+}
+.pop.direita { right: 0; }
+.pop h4 { margin: 0 0 9px; font-size: var(--g-fs-200); font-weight: var(--g-fw-forte); color: var(--g-texto); }
+.pop .linha { display: flex; align-items: center; gap: var(--g-e-8); padding: var(--g-e-4) 0; font-size: var(--g-fs-200); }
+.pop .linha label { flex: 1; cursor: pointer; color: var(--g-texto-2); }
+.pop .linha input[type="number"], .pop .linha input[type="text"] {
+  width: 96px; height: var(--g-h-xs); padding: 0 7px; font-family: inherit;
+  font-size: var(--g-fs-200); text-align: right;
+  background: var(--g-surface-2); color: var(--g-texto);
+  border: 1px solid var(--g-border); border-radius: var(--g-r-xs);
+}
+.pop .acoes { display: flex; gap: var(--g-e-6); margin-top: var(--g-e-8); }
+.pop .lista-views { max-height: 190px; overflow-y: auto; }
+.pop .view-item {
+  display: flex; align-items: center; gap: var(--g-e-6);
+  padding: 5px 0; border-bottom: 1px solid var(--g-border);
+}
+.pop .view-item button.abrir {
+  flex: 1; text-align: left; background: none; border: none; cursor: pointer;
+  font-family: inherit; color: var(--g-texto-2); font-size: var(--g-fs-200); font-weight: var(--g-fw-semi);
+}
+.pop .view-item button.abrir:hover { color: var(--g-acento); }
+.pop .view-item .apagar {
+  background: none; border: none; color: var(--g-texto-3); cursor: pointer; font-size: var(--g-fs-300);
+}
+.pop .view-item .apagar:hover { color: var(--g-negativo); }
+
+/* Dicionário: o que cada número significa e de que campo ele sai.
+   O catálogo não carrega origemDados (dobraria o payload), então o
+   campo/filtro vem da resposta da própria consulta. */
+.pop.dicionario { min-width: 340px; max-width: 420px; max-height: 60vh; overflow-y: auto; }
+.pop.dicionario .verbete { padding: var(--g-e-8) 0; border-bottom: 1px solid var(--g-border); }
+.pop.dicionario .verbete:last-child { border-bottom: none; }
+.pop.dicionario .verbete .nome {
+  display: flex; align-items: center; gap: var(--g-e-6);
+  font-size: var(--g-fs-200); font-weight: var(--g-fw-forte); color: var(--g-texto);
+}
+.pop.dicionario .verbete .nome .pt {
+  width: 7px; height: 7px; border-radius: var(--g-r-circ); flex: none; background: var(--chip-cor, var(--g-acento));
+}
+.pop.dicionario .verbete p {
+  margin: var(--g-e-4) 0 0; font-size: var(--g-fs-100); color: var(--g-texto-2);
+  line-height: var(--g-lh-base);
+}
+.pop.dicionario .verbete .formula {
+  display: block; margin-top: var(--g-e-4); padding: 3px var(--g-e-6);
+  font-family: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+  font-size: var(--g-fs-50); background: var(--g-surface-3); border-radius: var(--g-r-xs);
+  color: var(--g-texto-2); word-break: break-word;
+}
+
+.fundo-modal { position: fixed; inset: 0; z-index: var(--g-z-fundo); background: rgba(8, 15, 28, .45); }
+
+/* ── Drill-down ────────────────────────────────────────────── */
+.drill {
+  position: fixed; z-index: var(--g-z-drill); right: 0; top: 0; bottom: 0; width: min(640px, 94vw);
+  background: var(--g-surface); border-left: 1px solid var(--g-border-forte);
+  box-shadow: var(--g-sombra-2); display: flex; flex-direction: column;
+  animation: entra var(--g-t-3) ease-out;
+}
+@keyframes entra { from { transform: translateX(24px); opacity: 0; } }
+.drill .d-cab {
+  display: flex; align-items: center; gap: var(--g-e-8);
+  padding: var(--g-e-16); border-bottom: 1px solid var(--g-border);
+}
+.drill .d-cab h3 { margin: 0; font-size: var(--g-fs-400); font-weight: var(--g-fw-forte); color: var(--g-texto); }
+.drill .d-cab p { margin: var(--g-e-2) 0 0; font-size: var(--g-fs-100); color: var(--g-texto-3); }
+.drill .d-cab .fechar {
+  margin-left: auto; background: none; border: none; font-size: 20px; line-height: 1;
+  color: var(--g-texto-3); cursor: pointer;
+}
+.drill .d-corpo { flex: 1; overflow-y: auto; overflow-x: hidden; padding: var(--g-e-16); }
+
+/* Estatísticas do item: ranking, participação, média, pico e vale.
+   Todos saem da resposta que o drill já buscava — nenhuma query nova. */
+.d-stats {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--g-e-8); margin-bottom: var(--g-e-12);
+}
+.d-stat {
+  padding: var(--g-e-8); border-radius: var(--g-r-sm);
+  background: var(--g-surface-2); border: 1px solid var(--g-border);
+}
+.d-stat .rot {
+  display: block; font-size: var(--g-fs-50); font-weight: var(--g-fw-forte);
+  text-transform: uppercase; letter-spacing: .4px; color: var(--g-texto-3);
+}
+.d-stat .val {
+  display: block; margin-top: 3px; font-size: var(--g-fs-400); font-weight: var(--g-fw-max);
+  color: var(--g-texto); font-variant-numeric: tabular-nums; line-height: var(--g-lh-apertada);
+}
+.d-stat .sub { display: block; font-size: var(--g-fs-50); color: var(--g-texto-3); }
+
+.drill-tabela-rolagem {
+  overflow-x: auto; overflow-y: visible; max-height: none;
+  border-radius: var(--g-r-sm); border: 1px solid var(--g-border);
+}
+table.tg-drill { min-width: 0; }
+table.tg-drill th.rotulo, table.tg-drill td.rotulo {
+  position: static; min-width: 96px; max-width: none; white-space: nowrap;
+}
+
+/* ── Tendência mensal do corte ─────────────────────────────────
+   Uma consulta agrupada por mês, sob demanda. Sempre o ano inteiro
+   (é como a query é montada), mesmo com mês ou dia filtrado.      */
+.tend { margin-bottom: var(--g-e-12); padding: var(--g-e-12) var(--g-e-16); }
+.tend .t-cab { display: flex; align-items: center; gap: var(--g-e-8); flex-wrap: wrap; }
+.tend .t-cab h3 { margin: 0; font-size: var(--g-fs-300); font-weight: var(--g-fw-forte); color: var(--g-texto); }
+.tend .t-cab p { margin: 0; font-size: var(--g-fs-100); color: var(--g-texto-3); }
+.tend .t-cab .acoes { margin-left: auto; display: flex; align-items: center; gap: var(--g-e-6); }
+.tend .t-corpo { margin-top: var(--g-e-12); }
+
+/* ── Estados ───────────────────────────────────────────────── */
+.estado { padding: var(--g-e-32) var(--g-e-20); text-align: center; color: var(--g-texto-3); font-size: var(--g-fs-300); }
+.estado.compacto { padding: var(--g-e-12) 0; font-size: var(--g-fs-100); }
+.estado.erro { color: var(--g-negativo); }
+.estado .titulo {
+  display: block; font-size: var(--g-fs-400); font-weight: var(--g-fw-forte);
+  color: var(--g-texto-2); margin-bottom: 5px;
+}
+.estado .acoes { margin-top: var(--g-e-12); display: flex; gap: var(--g-e-6); justify-content: center; flex-wrap: wrap; }
+
+.progresso { height: 2px; background: var(--g-surface-3); overflow: hidden; border-radius: 2px; }
+.progresso i {
+  display: block; height: 100%; width: 34%; border-radius: 2px; background: var(--g-acento);
+  animation: correr 1.05s infinite ease-in-out;
+}
+@keyframes correr { 0% { margin-left: -34%; } 100% { margin-left: 100%; } }
+
+.toast {
+  position: fixed; z-index: var(--g-z-toast); left: 50%; bottom: var(--g-e-24); transform: translateX(-50%);
+  display: flex; align-items: center; gap: 9px; padding: var(--g-e-8) var(--g-e-16); max-width: 90vw;
+  background: var(--g-texto); color: var(--g-bg); border-radius: var(--g-r-pill);
+  font-size: var(--g-fs-200); font-weight: var(--g-fw-semi); box-shadow: var(--g-sombra-2);
+  animation: sobe .2s ease-out;
+}
+@keyframes sobe { from { transform: translate(-50%, 12px); opacity: 0; } }
+
+/* ── Destaques (maiores variações) ─────────────────────────── */
+.destaques { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: var(--g-e-8); }
+.destaques .destaque {
+  display: flex; align-items: center; gap: 11px; padding: 11px var(--g-e-12) 11px 11px;
+  border-left: 3px solid var(--g-border-forte); position: relative;
+}
+.destaques .destaque.delta-bom { border-left-color: var(--g-positivo); }
+.destaques .destaque.delta-ruim { border-left-color: var(--g-negativo); }
+.destaques .destaque.delta-neutro { border-left-color: var(--g-border-forte); }
+.destaques .destaque .seta {
+  flex: none; width: 30px; height: 30px; border-radius: var(--g-r-sm); display: grid; place-items: center;
+  font-size: var(--g-fs-400); font-weight: var(--g-fw-max); line-height: 1; background: var(--g-surface-3);
+}
+.destaques .destaque.delta-bom .seta { background: color-mix(in srgb, var(--g-positivo) 16%, transparent); color: var(--g-positivo); }
+.destaques .destaque.delta-ruim .seta { background: color-mix(in srgb, var(--g-negativo) 16%, transparent); color: var(--g-negativo); }
+.destaques .destaque .txt { min-width: 0; }
+.destaques .destaque .txt b {
+  display: block; font-size: var(--g-fs-100); color: var(--g-texto-3); font-weight: var(--g-fw-forte);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  text-transform: uppercase; letter-spacing: .4px; margin-bottom: var(--g-e-2);
+}
+.destaques .destaque .txt .valor-linha { display: flex; align-items: baseline; gap: var(--g-e-6); flex-wrap: wrap; }
+.destaques .destaque .txt .valor-atual {
+  font-size: var(--g-fs-400); font-weight: var(--g-fw-max); color: var(--g-texto);
+  font-variant-numeric: tabular-nums;
+}
+.destaques .destaque .txt .valor-delta { font-size: var(--g-fs-200); font-weight: var(--g-fw-max); }
+.destaques .destaque.delta-bom .valor-delta { color: var(--g-positivo); }
+.destaques .destaque.delta-ruim .valor-delta { color: var(--g-negativo); }
+.destaques .destaque.delta-neutro .valor-delta { color: var(--g-texto-3); }
+.destaques .destaque .txt .valor-base { display: block; font-size: var(--g-fs-50); color: var(--g-texto-3); margin-top: 1px; }
+.destaques .destaque .txt .onde { display: block; font-size: var(--g-fs-50); color: var(--g-texto-3); margin-top: 1px; }
+
+.convite {
+  display: flex; align-items: center; gap: var(--g-e-8); padding: var(--g-e-12);
+  font-size: var(--g-fs-200); color: var(--g-texto-3);
+}
+
+/* ── Atalhos ───────────────────────────────────────────────── */
+.atalhos { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--g-e-6) var(--g-e-12); }
+.atalhos div {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--g-e-8); font-size: var(--g-fs-200);
+}
+kbd {
+  padding: 1px var(--g-e-6); border-radius: 5px; font-family: inherit;
+  font-size: var(--g-fs-100); font-weight: var(--g-fw-forte);
+  background: var(--g-surface-3); color: var(--g-texto-2); border: 1px solid var(--g-border-forte);
+}
+
+/* ── Impressão ─────────────────────────────────────────────── */
+@media print {
+  .topo, .menu, .abas-area, .ver-por, .palheta, .busca-global, .faixa-cache,
+  .ferramentas, .linha-indicadores, .secao-cab .acoes, .drill, .toast, .pop,
+  .fundo-modal, .pular-para, .tend .t-cab .acoes { display: none !important; }
+  .corpo { grid-template-columns: 1fr; }
+  .conteudo { padding: 0; }
+  .cartao { box-shadow: none; border-color: #ccc; break-inside: avoid; }
+  .tabela-rolagem { max-height: none; overflow: visible; }
+  body.geral { background: #fff; font-size: 10.5px; }
+}
+
+/* ── Responsivo ────────────────────────────────────────────── */
+@media (min-width: 1600px) {
+  .blocos { grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); }
+  :root { --g-fs-kpi: 26px; --g-fs-kpi-lg: 32px; }
+}
+
+/* Faixa do notebook corporativo (1366×768, 1280×800): antes não havia
+   breakpoint nenhum entre 720 e 1180, e era justo aqui que o menu de
+   258px + a barra de ferramentas espremiam o conteúdo. */
+@media (max-width: 1280px) {
+  :root { --g-menu-larg: 216px; --g-fs-kpi: 22px; --g-fs-kpi-lg: 26px; }
+  .conteudo { padding: var(--g-e-16) var(--g-e-16) var(--g-e-48); }
+  .blocos { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+  .abas-area .aba .qtd { display: none; }
+}
+
+/* Menu vira gaveta sobre o conteúdo. Empilhado (o comportamento
+   antigo) ele punha 320px de lista ACIMA de qualquer número. */
+@media (max-width: 1024px) {
+  .corpo, .corpo.sem-menu { grid-template-columns: minmax(0, 1fr); }
+  .menu {
+    position: fixed; left: 0; top: calc(var(--g-topo) + var(--g-abas));
+    width: 280px; max-width: 86vw; z-index: var(--g-z-pop);
+    border-right: 1px solid var(--g-border-forte); box-shadow: var(--g-sombra-2);
+    transform: translateX(-100%); transition: transform var(--g-t-3) var(--g-ease);
+  }
+  .corpo:not(.sem-menu) .menu { transform: none; }
+  .corpo.sem-menu .menu { display: flex; }
+}
+
+@media (max-width: 860px) {
+  .blocos { grid-template-columns: 1fr; }
+  .ver-por .vp-grade { grid-template-columns: 1fr; }
+  .grafico-caixa { height: 280px; }
+  .fer-grupo.dados { flex-basis: 100%; }
+  .fer-grupo.saida { margin-left: 0; }
+  .btn, .sel, .busca-tabela input { height: var(--g-h-lg); }
+  .btn.pequeno { height: var(--g-h-sm); }
+}
+
+@media (max-width: 720px) {
+  /* O topo passa a ter altura variável aqui, então o offset sticky das
+     abas deixa de bater — melhor soltá-las do que deixá-las flutuando
+     sobre o conteúdo. O menu volta a ser estático pelo mesmo motivo. */
+  .topo { height: auto; flex-wrap: wrap; padding: var(--g-e-8) var(--g-e-12); gap: var(--g-e-8); }
+  .busca-global { order: 9; flex-basis: 100%; max-width: none; }
+  .abas-area { position: static; padding: 0 var(--g-e-8); }
+  .menu { position: static; width: auto; max-width: none; height: auto; max-height: 380px; transform: none; box-shadow: none; }
+  .conteudo { padding: var(--g-e-12) var(--g-e-12) var(--g-e-32); }
+  .kpis { grid-template-columns: repeat(2, 1fr); }
+  .kpis .kpi:first-child { grid-column: 1 / -1; }
+  .grafico-caixa { height: 260px; }
+  .usuario-topo .txt { display: none; }
+  .palheta { top: 6vh; max-height: 84vh; }
+  table.tg thead th.rotulo, table.tg tbody td.rotulo { min-width: 160px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important; animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+  }
+  .esqueleto::after { display: none; }
+  .progresso i { width: 100%; margin-left: 0; }
+}

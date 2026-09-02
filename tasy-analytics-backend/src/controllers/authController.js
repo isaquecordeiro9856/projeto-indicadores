@@ -1,8 +1,9 @@
 const jwt = require('jsonwebtoken');
-const pool = require('../config/database');
 const { validarCredenciais } = require('../services/usuarioService');
-const { resetSenha } = require('../services/resetSenha');
-const { MAPA_PERFIS, DEFAULT_PERMISSAO } = require('../config/permissoes');
+const { resolverPermissao } = require('../config/permissoes');
+const logger = require('../config/logger');
+
+const MSG_SEM_ACESSO = 'Acesso restrito à supervisão e à direção. Fale com o administrador do sistema.';
 
 async function login(req, res) {
   try {
@@ -23,10 +24,15 @@ async function login(req, res) {
     // DEV_MODE: se usuario nao tem perfil, atribui Admin (1848) para testes
     if (process.env.DEV_MODE === 'true' && !usuario.cd_perfil_inicial) {
       usuario.cd_perfil_inicial = 1848;
-      console.log('[DEV MODE] Atribuindo perfil Admin (1848) ao usuario:', usuario.nm_usuario);
+      logger.debug({ nm_usuario: usuario.nm_usuario }, '[DEV MODE] Atribuindo perfil Admin (1848) ao usuario');
     }
 
-    const perfil = MAPA_PERFIS[usuario.cd_perfil_inicial] || DEFAULT_PERMISSAO;
+    const perfil = resolverPermissao(usuario);
+
+    // Sistema restrito a supervisão/direção: usuário comum não recebe token.
+    if (!perfil.dashboards.length) {
+      return res.status(403).json({ mensagem: MSG_SEM_ACESSO });
+    }
 
     const token = jwt.sign(
       {
@@ -36,7 +42,8 @@ async function login(req, res) {
         cd_setor_atendimento: usuario.cd_setor_atendimento,
         cd_estabelecimento: usuario.cd_estabelecimento,
         cd_pessoa_fisica: usuario.cd_pessoa_fisica,
-        ie_profissional: usuario.ie_profissional
+        ie_profissional: usuario.ie_profissional,
+        ie_medico: !!usuario.ie_medico
       },
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRATION || '8h' }
@@ -54,14 +61,20 @@ async function login(req, res) {
       perfil
     });
   } catch (error) {
-    console.error('Erro no login:', error);
+    logger.error({ err: error }, 'Erro no login');
     res.status(500).json({ mensagem: 'Erro interno do servidor' });
   }
 }
 
 async function me(req, res) {
   try {
-    const perfil = MAPA_PERFIS[req.usuario.cd_perfil_inicial] || DEFAULT_PERMISSAO;
+    const perfil = resolverPermissao(req.usuario);
+
+    // Token emitido antes de o acesso ser revogado (ex.: perfil saiu da
+    // lista de supervisão) deixa de valer aqui, não só nos dashboards.
+    if (!perfil.dashboards.length) {
+      return res.status(403).json({ mensagem: MSG_SEM_ACESSO });
+    }
 
     res.json({
       usuario: {
@@ -76,23 +89,9 @@ async function me(req, res) {
       perfil
     });
   } catch (error) {
-    console.error('Erro ao retornar dados do usuário:', error);
+    logger.error({ err: error }, 'Erro ao retornar dados do usuário');
     res.status(500).json({ mensagem: 'Erro interno do servidor' });
   }
 }
 
-async function resetSenhaTemp(req, res) {
-  try {
-    const { nm_usuario, nova_senha } = req.body;
-    if (!nm_usuario || !nova_senha) {
-      return res.status(400).json({ mensagem: 'nm_usuario e nova_senha são obrigatórios' });
-    }
-    const result = await resetSenha(pool, nm_usuario, nova_senha);
-    res.json({ mensagem: 'Senha alterada para ' + result.usuario, novoHash: result.novoHash });
-  } catch (error) {
-    console.error('Erro ao resetar senha:', error);
-    res.status(500).json({ mensagem: error.message });
-  }
-}
-
-module.exports = { login, me, resetSenhaTemp };
+module.exports = { login, me };

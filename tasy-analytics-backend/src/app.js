@@ -1,12 +1,27 @@
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const pinoHttp = require('pino-http');
 const path = require('path');
 require('dotenv').config();
 
+const logger = require('./config/logger');
+
+if (process.env.NODE_ENV === 'production' && process.env.DEV_MODE === 'true') {
+  logger.fatal('DEV_MODE=true não pode ser usado com NODE_ENV=production (bypass de autenticação).');
+  process.exit(1);
+}
+
 const app = express();
 
-app.use(cors());
+// CSP desabilitada: frontend usa scripts/estilos inline (AngularJS). Demais
+// headers de segurança do helmet (X-Content-Type-Options, HSTS, etc.) seguem ativos.
+app.use(helmet({ contentSecurityPolicy: false }));
+app.use(cors({
+  origin: process.env.ALLOWED_ORIGIN ? process.env.ALLOWED_ORIGIN.split(',') : true
+}));
 app.use(express.json());
+app.use(pinoHttp({ logger }));
 
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/glosas', require('./routes/glosas'));
@@ -15,6 +30,7 @@ app.use('/api/pempfrg', require('./routes/pempfrg'));
 app.use('/api/farmacia', require('./routes/farmacia'));
 app.use('/api/centrocirurgico', require('./routes/centrocirurgico'));
 app.use('/api/fisioterapia', require('./routes/fisioterapia'));
+app.use('/api/geral', require('./routes/geral'));
 
 const frontendPath = path.join(__dirname, '..', '..', 'frontend');
 app.use(express.static(frontendPath));
@@ -35,6 +51,6 @@ app.get('*', (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`TASY Analytics rodando na porta ${PORT}`);
-  console.log(`Frontend: http://localhost:${PORT}/login.html`);
+  logger.info(`TASY Analytics rodando na porta ${PORT}`);
+  logger.info(`Frontend: http://172.16.28.90:${PORT}/login.html`);
 });
